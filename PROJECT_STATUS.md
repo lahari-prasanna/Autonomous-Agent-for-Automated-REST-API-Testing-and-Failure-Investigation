@@ -1,0 +1,150 @@
+# Project Status
+
+## Current Status Overview
+- **Active Phase:** Phase 3C Completed — LangGraph Workflow Assembly & Conditional Routing Verified
+- **Overall Completion:** 55% (Phase 0, Phase 1A, Phase 1B, Phase 2A, Phase 2B, Phase 2C, Phase 3A, Phase 3B, and Phase 3C completed)
+- **Status Date:** 2026-11-02
+
+---
+
+## 1. Work Breakdown
+
+### Completed Work
+- [x] Workspace inspection and cleanup.
+- [x] Project root organization with dedicated directories (`backend/`, `frontend/`, `mock_api/`, `tests/`).
+- [x] Mandatory documentation creation (`README.md`, `PROJECT_STATUS.md`, `ARCHITECTURE.md`, `DEVELOPMENT_LOG.md`, `TASKS.md`).
+- [x] Environment configuration template (`.env.example`) and `.gitignore`.
+- [x] Host environment assessment (Python, Node.js, npm, PostgreSQL, Git).
+- [x] Python virtual environment verified and upgraded.
+- [x] Minimal backend dependencies installed (`fastapi`, `uvicorn`, `pydantic`, `httpx`, `python-dotenv`).
+- [x] Controlled mock REST API implemented (`mock_api/main.py`) with intentional testable defects.
+- [x] Safety headers and loopback restrictions established.
+- [x] Automated test suite and live HTTP requests executed and verified (12/12 passing).
+- [x] OpenAPI 3.1 specification exported (`mock_api/openapi.json`).
+- [x] Parsing dependencies installed (`prance`, `openapi-spec-validator`, `pytest`).
+- [x] Normalized Pydantic models defined (`backend/app/schemas/spec.py`).
+- [x] Deterministic `OpenAPIParser` implemented (`backend/app/services/spec_parser.py`) with security pre-scan, safe recursive `$ref` dereferencing, parameter/security merging, and full JSON Schema fidelity.
+- [x] Parser test suite implemented and verified (`tests/test_parser.py`, 12/12 passing).
+- [x] SSRF Security Guard implemented (`backend/app/core/security.py`) with DNS multi-address check, IP range filtering, IPv4-mapped IPv6 unwrap, Safe Dev Mode, and DNS rebinding connection pinning.
+- [x] Security test suite implemented and verified (`tests/test_security.py`, 38/38 passing).
+- [x] Execution schemas defined (`backend/app/schemas/execution.py`) with structured `ExecutionRequest`, `ExecutionResult`, and header/URL sanitization.
+- [x] Deterministic HTTP Executor implemented (`backend/app/services/http_executor.py`) integrating `SSRFSafeAsyncTransport`, 10MB streaming size ceiling, 10s wall-clock deadline including semaphore wait, concurrency semaphore (5), and manual redirect traversal (max 3 hops).
+- [x] HTTP Executor test suite implemented and verified (`tests/test_executor.py`, 26/26 passing).
+- [x] Deterministic Assertion Evaluator implemented (`backend/app/services/assertion_evaluator.py`) with status matching (exact, ranges `2XX/4XX/5XX`, `default`), Content-Type validation, JSON Schema Draft 2020-12 validation, OAS 3.0 `nullable` and OAS 3.1 null unions, constraint/composition validation, empty response handling, and RFC 6901 JSON pointer paths.
+- [x] Assertion Evaluator test suite implemented and verified (`tests/test_assertion_evaluator.py`, 29/29 passing).
+- [x] LangGraph Agent State and Data Models implemented (`backend/app/agent/state.py`):
+  - [x] Unified `AgentState` TypedDict with explicit workflow statuses (`idle`, `spec_loaded`, `operation_selected`, `request_ready`, `executed`, `evaluated`, `error`).
+  - [x] Structured error envelope (`AgentError`) with diagnostic metadata and exception conversion.
+  - [x] Pure data models retaining zero live HTTP clients, sockets, or open streams.
+  - [x] Safe initial state helper (`create_initial_state`) guaranteeing isolated mutable containers and preserving existing state.
+- [x] Agent State test suite implemented and verified (`tests/test_agent_state.py`, 7/7 passing).
+- [x] Deterministic LangGraph Individual Nodes implemented (`backend/app/agent/nodes.py`):
+  - [x] `load_spec_node`: Ingests/normalizes OpenAPI 3.0.x/3.1.x specifications via `OpenAPIParser`.
+  - [x] `select_operation_node`: Resolves operations by ID or method/path from `ParsedAPISpec.endpoints`.
+  - [x] `prepare_request_node`: Assembles `ExecutionRequest` with path parameters, auth token, and clamped boundaries.
+  - [x] `execute_request_node`: Asynchronously executes HTTP request through `HTTPExecutor` with SSRF and deadline protections.
+  - [x] `evaluate_response_node`: Deterministically evaluates responses via `DeterministicAssertionEvaluator`.
+- [x] Agent Nodes test suite implemented and verified (`tests/test_agent_nodes.py`, 23/23 passing).
+- [x] LangGraph Workflow Assembly & Explicit Conditional Routing implemented (`backend/app/agent/graph.py`):
+  - [x] StateGraph registers 5 nodes: `load_spec`, `select_operation`, `prepare_request`, `execute_request`, `evaluate_response`.
+  - [x] Explicit conditional routing functions (`route_after_load_spec`, `route_after_select_operation`, `route_after_prepare_request`, `route_after_execute_request`, `route_after_evaluate_response`).
+  - [x] Terminating error handling at `END` preserving structured `AgentError`.
+  - [x] Non-evaluating termination for timeouts and network errors.
+  - [x] Seamless handling of schema assertion failures as evaluated reports rather than routing errors.
+  - [x] Clean public interfaces: `build_agent_graph()`, `compile_agent_graph()`, `agent_graph`.
+- [x] Agent Graph test suite implemented and verified (`tests/test_agent_graph.py`, 14/14 passing).
+
+### Work In Progress
+- [ ] Phase 4: Failure Investigation Engine with RAG & Retesting Loop.
+
+### Pending Work
+- [ ] Phase 4: Failure Investigation Engine with RAG & Retesting Loop.
+- [ ] Phase 5: FastAPI REST Endpoints, Database Integration & SSE Streaming.
+- [ ] Phase 6: React UI Dashboard & Visual Workspace.
+- [ ] Phase 7: End-to-End System Testing & Verification.
+
+---
+
+## 2. Working Features
+- Verified project folder structure.
+- Environment configuration template with security defaults.
+- Standardized documentation framework.
+- Controlled Mock REST API (`http://127.0.0.1:8081`):
+  - Health check & safety headers (`X-Controlled-Mock-API: true`).
+  - Bearer token authentication flow.
+  - Product CRUD endpoints with category filtering.
+  - Reproducible defect scenarios (500 Internal Server Error on price < 0, 400 Bad Request on price == 0, 401 on missing auth).
+- Exported OpenAPI specification (`mock_api/openapi.json`).
+- OpenAPI Specification Parser (`backend/app/services/spec_parser.py`):
+  - Ingests JSON and YAML OpenAPI 3.0.x and 3.1.x specifications.
+  - Rejects external remote HTTP/HTTPS and file `$ref` references (SSRF/LFI defense).
+  - Safely dereferences internal `$ref` pointers without infinite recursion on circular schemas.
+  - Merges path-level and operation-level parameters and security requirements.
+  - Preserves multiple request/response content-types and non-numeric status codes (`default`, `2XX`, `4XX`).
+  - Preserves JSON Schema composition keywords (`allOf`, `oneOf`, `anyOf`, `not`) and constraints.
+- SSRF Security Guard (`backend/app/core/security.py`):
+  - Protocol whitelist: HTTP and HTTPS only.
+  - Rejects URLs with embedded credentials and invalid ports.
+  - Multi-address DNS resolution: rejects host if ANY resolved IP is prohibited.
+  - DNS rebinding & TOCTOU mitigation: pins outbound TCP socket directly to verified safe IP.
+  - Post-connect socket remote address verification.
+  - Safe dev mode: strictly permits 127.0.0.1 and localhost in `SAFE_DEV_MODE=True`; blocks loopback in `SAFE_DEV_MODE=False`. Cloud metadata and private LAN always blocked.
+  - Custom HTTPX transports (`SSRFSafeAsyncTransport`, `SSRFSafeSyncTransport`) with ambient proxy isolation (`trust_env=False`).
+- Deterministic HTTP Executor (`backend/app/services/http_executor.py`):
+  - Executes GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS deterministically.
+  - Custom `SSRFSafeAsyncTransport` integration ensuring every initial request and redirect hop connects only to verified IPs.
+  - Manual redirect traversal (max 3 hops), with automatic per-hop SSRF validation and cross-origin sensitive header stripping.
+  - High-precision latency measurement (`time.perf_counter()`).
+  - 10 MB streamed response size limit protecting against memory exhaustion and decompression bombs.
+  - Hard 10-second total timeout clamped across connect (3s), read (7s), and write (3s).
+  - Concurrency limiting using an `asyncio.Semaphore` (default 5 concurrent connections).
+  - Robust header and URL sanitization preventing credential leakage in logs and `ExecutionResult` envelopes.
+- Deterministic Assertion Evaluator (`backend/app/services/assertion_evaluator.py`):
+  - Validates execution envelopes against OpenAPI 3.0.x and 3.1.x operations with 0 LLM token usage.
+  - Status code matching: exact (e.g. 200), class range (e.g. 2XX, 4XX, 5XX), and default fallback.
+  - Content-Type matching: exact, wildcard (`*/*`, `application/*`), and structured syntax (`+json`).
+  - Response body validation: full JSON Schema Draft 2020-12 support (`type`, `required`, `properties`, `enum`, `minimum`, `maximum`, `minLength`, `maxLength`, `minItems`, `maxItems`).
+  - Composition support: `oneOf`, `anyOf`, and `allOf`.
+  - Schema version nullability: OAS 3.0 `nullable: true` and OAS 3.1 `type: ['string', 'null']` unions.
+  - Accurate RFC 6901 JSON pointer paths (e.g. `/order/items/0/price`) on failure.
+  - Graceful handling of empty bodies (204 No Content), missing response schemas, and unresolved references.
+
+---
+
+## 3. Known Issues & Blockers
+- **PostgreSQL Not Detected:** PostgreSQL client (`psql`) is not currently installed or available in PATH on the host machine.
+  - *Impact:* Database persistence requires installing PostgreSQL before Phase 5.
+  - *Mitigation Plan:* PostgreSQL installation instructions provided; not a blocker for Phase 2 or Phase 3.
+
+---
+
+## 4. Test Results
+- Automated mock API test suite (`mock_api/verify_api.py`):
+  - 12 / 12 test scenarios PASSED (Health, Auth, CRUD, Boundary, Defect).
+- Live server test via `uvicorn` & `curl`:
+  - `GET /api/health` -> 200 OK with `x-controlled-mock-api: true`.
+  - `POST /api/products` (price: -500) -> 500 Internal Server Error (Verified intentional defect).
+- OpenAPI Parser unit test suite (`tests/test_parser.py`):
+  - 12 / 12 test scenarios PASSED (`pytest`).
+- SSRF Security Guard unit test suite (`tests/test_security.py`):
+  - 38 / 38 test scenarios PASSED (`pytest`).
+- Deterministic HTTP Executor unit test suite (`tests/test_executor.py`):
+  - 26 / 26 test scenarios PASSED (`pytest`).
+- Deterministic Assertion Evaluator unit test suite (`tests/test_assertion_evaluator.py`):
+  - 29 / 29 test scenarios PASSED (`pytest`).
+- LangGraph Agent State unit test suite (`tests/test_agent_state.py`):
+  - 7 / 7 test scenarios PASSED (`pytest`).
+- LangGraph Agent Nodes unit test suite (`tests/test_agent_nodes.py`):
+  - 23 / 23 test scenarios PASSED (`pytest`).
+- LangGraph Agent Graph unit test suite (`tests/test_agent_graph.py`):
+  - 14 / 14 test scenarios PASSED (`pytest`).
+- **Total Verification Count:** 161 / 161 tests passing across all suites (149 pytest + 12 mock API) with zero regressions.
+
+---
+
+## 5. Next Milestone
+**Phase 4: Failure Investigation Engine, RAG & Retesting Loop**
+- ChromaDB vector store integration for RFC HTTP standards (`backend/app/services/rag_service.py`).
+- Root cause hypothesis generator and failure evidence synthesizer (`investigate_failures_node`).
+- Bounded retest decision logic and loop termination guards.
+
