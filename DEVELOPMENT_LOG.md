@@ -956,3 +956,127 @@
 - **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
 - **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
 - **Total Test Count:** 259 / 259 PASSED (247 pytest + 12 mock API, 0 regressions).
+
+---
+
+## Entry 020 — Phase 4B.2: Document Ingestion and Chunking Service Implementation
+- **Date:** 2026-11-03
+- **Phase:** Phase 4B.2 (RAG Knowledge Base — Document Ingestion and Chunking — Implemented, Pending Review)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+1. Implement secure, deterministic `DocumentIngestionService` in `backend/app/services/document_ingestion.py`.
+2. Support three canonical knowledge source origins:
+   - `OPENAPI_SPEC`: Reuses Phase 1B `OpenAPIParser` to extract operation-level knowledge (`EndpointDefinition`).
+   - `API_DOCUMENTATION`: Ingests Markdown (`.md`) and plain text (`.txt`) files from approved workspace roots (`docs`, `specs`, `mock_api`) using deterministic heading-based chunking.
+   - `FAILURE_HISTORY`: Ingests validated `FailureClassification` outcomes and Phase 4A compact history records, strictly verifying endpoint method/path provenance against `spec.endpoints`.
+3. Harden filesystem security against TOCTOU and symlink escapes:
+   - Start traversal from the trusted workspace directory file descriptor.
+   - Step through approved-root components and target directory components using `O_DIRECTORY | O_NOFOLLOW`.
+   - Open target file relative to final directory FD using `O_NOFOLLOW`.
+   - Validate opened descriptor with `fstat()` requiring `stat.S_ISREG` (rejecting FIFOs, devices, sockets).
+   - Enforce 1 MB limit using a bounded read loop (`MAX_FILE_SIZE_BYTES + 1`) that prevents size bypass even on dynamic file growth.
+   - Ensure all intermediate and file descriptors are closed on all execution branches.
+   - Implement documented non-POSIX fallback.
+4. Establish collision-resistant source identity and decoupled chunk identity:
+   - Normalize relative paths with Unicode NFC, forward slashes, and case preservation.
+   - Combine source type, approved root, and path into a 16-character SHA-256 fingerprint.
+   - Construct `document_id` with source slug and content hash.
+   - Decouple `chunk_id` from the whole-document hash so that editing one section preserves the chunk IDs of unchanged sections.
+   - Deterministically handle duplicate headings via sequential occurrence counters.
+5. Apply OpenAPI extraction safety limits:
+   - `MAX_SCHEMA_DEPTH = 4`, `MAX_OPERATION_PARAMETERS = 30`, `MAX_OPERATION_RESPONSES = 10`.
+   - Cumulative `MAX_OPERATION_TOTAL_PROPERTIES = 80` enforced across the entire operation.
+   - Maximum description length 1,024 characters.
+   - Local circular `$ref` cycles preserved as local reference strings without infinite recursion.
+   - Raw examples and credentials unconditionally excluded; sensitive property names redacted.
+6. Enforce three-tier content sanitization policy:
+   - Category A: Structural drop of raw request/response bodies, headers, auth material, assertion actuals, and tracebacks.
+   - Category B: Redaction of recognized bearer tokens, JWTs, PEM private keys, and credential assignments.
+   - Category C: Quarantine of suspicious ambiguous content (raw header dumps, high-entropy tokens) using separate typed `IngestionResult` and `IngestionWarning` representations without modifying Phase 4B.1 schemas.
+7. Bound chunks to maximum 2,048 characters with hierarchical paragraph/sentence splitting.
+8. Add comprehensive unit test suite in `tests/test_document_ingestion.py` covering all filesystem security, identity stability, OpenAPI extraction limits, quarantine warnings, failure history provenance, and general behavior.
+
+### Actions Taken & Files Changed
+- **Document Ingestion Service (`backend/app/services/document_ingestion.py`):**
+  - Implemented typed exceptions (`IngestionError`, `SecurityPathError`, `DocumentSizeLimitError`, `MalformedDocumentError`, `SourceNotFoundError`, `ProvenanceVerificationError`).
+  - Defined `IngestionWarning` and `IngestionResult` models.
+  - Implemented `read_secure_file()` with POSIX descriptor-based traversal, `fstat()`, and bounded byte read loop.
+  - Implemented `compute_source_fingerprint()`, `compute_source_slug()`, and `sanitize_text()`.
+  - Implemented `DocumentIngestionService` with methods: `ingest_openapi_spec()`, `ingest_documentation_file()`, `ingest_failure_classification()`, `_extract_endpoint_knowledge()`, `_extract_schema_properties()`, `_split_markdown_sections()`, `_split_text_bounded()`, and `_split_paragraph_by_sentences()`.
+- **Document Ingestion Test Suite (`tests/test_document_ingestion.py`):**
+  - Created 36 comprehensive test cases covering filesystem security, intermediate/final symlinks, traversal attacks, encoded paths, null bytes, non-POSIX fallback, identity stability across edits, duplicate heading occurrence, OpenAPI extraction budgets, local circular references, failure history provenance verification, and strict chunk size boundaries.
+- **Tracking Documentation Updated:**
+  - `TASKS.md`: Marked Phase 4B.2 complete (pending review), updated test metrics.
+  - `PROJECT_STATUS.md`: Advanced status to Phase 4B.2 Implemented (Pending Review), overall completion 70%, tracking 295 passing verification checks.
+  - `DEVELOPMENT_LOG.md`: Added Entry 020.
+
+### Test Results
+- **Phase 4B.2 Document Ingestion Tests (`tests/test_document_ingestion.py`):** 36 / 36 PASSED.
+- **Phase 4B.1 Knowledge Schemas Tests (`tests/test_knowledge_schemas.py`):** 28 / 28 PASSED.
+- **Phase 4A Failure Classifier Tests (`tests/test_failure_classifier.py`):** 56 / 56 PASSED.
+- **Phase 3D Integration Tests (`tests/test_agent_integration.py`):** 14 / 14 PASSED.
+- **Phase 3C Agent Graph Tests (`tests/test_agent_graph.py`):** 14 / 14 PASSED.
+- **Phase 3B Agent Nodes Tests (`tests/test_agent_nodes.py`):** 23 / 23 PASSED.
+- **Phase 3A Agent State Tests (`tests/test_agent_state.py`):** 7 / 7 PASSED.
+- **Phase 2C Assertion Evaluator Tests (`tests/test_assertion_evaluator.py`):** 29 / 29 PASSED.
+- **Phase 2B HTTP Executor Tests (`tests/test_executor.py`):** 26 / 26 PASSED.
+- **Phase 2A Security Tests (`tests/test_security.py`):** 38 / 38 PASSED.
+- **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
+- **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
+- **Total Test Count:** 295 / 295 PASSED (283 pytest + 12 mock API, 0 regressions).
+
+---
+
+## Entry 021 — Phase 4B.2: Implementation of Targeted Audit Corrections (F-01, F-02, F-03, F-04)
+- **Date:** 2026-11-03
+- **Phase:** Phase 4B.2 (Document Ingestion and Chunking — Targeted Audit Corrections)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+Address the four targeted findings identified in the strict independent read-only audit of Phase 4B.2:
+1. **Fix F-01 (Source Identity Full Fingerprint):**
+   - Update `compute_source_slug()` and document ID construction across all source types (`OPENAPI_SPEC`, `API_DOCUMENTATION`, `FAILURE_HISTORY`) to incorporate the full 16-character source fingerprint (`fingerprint[:16]`).
+   - Preserve human-readable prefixes and content-versioning hashes.
+   - Ensure all generated document IDs strictly conform to `MAX_ID_LEN = 128`.
+   - Preserve chunk ID format and independence.
+2. **Fix F-02 (Directory-as-File Non-Regular File Validation):**
+   - Add a dedicated test verifying that attempting to ingest or read an existing directory as a target file is rejected through the non-regular-file validation path (`SecurityPathError`).
+   - Verify that zero documents and zero chunks are produced.
+3. **Fix F-03 (File-Growth Post-fstat Defense):**
+   - Add a focused test for `_read_bounded_fd()` simulating a file that passes initial `fstat()` size check but grows concurrently before/during reading.
+   - Verify that the bounded read loop detects content exceeding `MAX_FILE_SIZE_BYTES` (1 MB) and raises `DocumentSizeLimitError` without returning oversized content.
+4. **Fix F-04 (File Descriptor Leak Protection on Traversal Failure):**
+   - Add a dedicated test tracking file descriptors specifically opened by `read_secure_file()` during traversal.
+   - Verify that when component traversal fails partway through (e.g. encountering a non-directory in intermediate path components), all opened descriptors are closed in the `finally` block and verified at the OS level (`EBADF`).
+
+### Actions Taken & Files Changed
+- **`backend/app/services/document_ingestion.py`:**
+  - Updated `compute_source_slug(rel_path, fingerprint)`:
+    - Updated format to `{readable}_{fingerprint[:16]}` incorporating the full 16-character source fingerprint.
+  - Updated `ingest_openapi_spec()`:
+    - Fixed OpenAPI parser invocation to decode bytes to UTF-8 and call `parser.parse_string(spec_str)`.
+  - Updated `ingest_failure_classification()`:
+    - Updated `doc_id` format to incorporate `{fingerprint[:16]}` and clamped `clean_run_id` to max 32 chars.
+- **`tests/test_document_ingestion.py`:**
+  - Added `test_source_slug_and_document_id_full_fingerprint`: Verifies `compute_source_slug` incorporates 16-character fingerprint, and document IDs across OpenAPI specs, markdown files, and failure history contain the 16-character source fingerprint, start with the proper prefix, and satisfy `MAX_ID_LEN <= 128`.
+  - Added `test_read_secure_file_directory_as_file_rejected`: Verifies `read_secure_file` and `ingest_documentation_file` reject directories as files with `SecurityPathError("Target is not a regular file")`, producing zero documents and zero chunks.
+  - Added `test_read_bounded_fd_file_growth_rejected`: Simulates post-`fstat` file growth and verifies `_read_bounded_fd` raises `DocumentSizeLimitError` and returns zero oversized content.
+  - Added `test_read_secure_file_descriptor_cleanup_on_traversal_failure`: Tracks operation-specific descriptors during intermediate directory traversal failure and verifies 100% of opened descriptors are closed and invalid (`EBADF`).
+- **Documentation Updated:**
+  - `TASKS.md`, `PROJECT_STATUS.md`, and `DEVELOPMENT_LOG.md`.
+
+### Test Results
+- **Phase 4B.2 Document Ingestion Tests (`tests/test_document_ingestion.py`):** 40 / 40 PASSED.
+- **Phase 4B.1 Knowledge Schemas Tests (`tests/test_knowledge_schemas.py`):** 28 / 28 PASSED.
+- **Phase 4A Failure Classifier Tests (`tests/test_failure_classifier.py`):** 56 / 56 PASSED.
+- **Phase 3D Integration Tests (`tests/test_agent_integration.py`):** 14 / 14 PASSED.
+- **Phase 3C Agent Graph Tests (`tests/test_agent_graph.py`):** 14 / 14 PASSED.
+- **Phase 3B Agent Nodes Tests (`tests/test_agent_nodes.py`):** 23 / 23 PASSED.
+- **Phase 3A Agent State Tests (`tests/test_agent_state.py`):** 7 / 7 PASSED.
+- **Phase 2C Assertion Evaluator Tests (`tests/test_assertion_evaluator.py`):** 29 / 29 PASSED.
+- **Phase 2B HTTP Executor Tests (`tests/test_executor.py`):** 26 / 26 PASSED.
+- **Phase 2A Security Tests (`tests/test_security.py`):** 38 / 38 PASSED.
+- **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
+- **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
+- **Total Test Count:** 299 / 299 PASSED (287 pytest + 12 mock API, 0 regressions).

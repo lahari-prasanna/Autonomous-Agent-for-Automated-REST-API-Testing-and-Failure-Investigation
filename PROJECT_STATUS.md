@@ -1,8 +1,8 @@
 # Project Status
 
 ## Current Status Overview
-- **Active Phase:** Phase 4B.1 Corrected (Pending Final Review) — Knowledge Document & Chunk Schemas Verified
-- **Overall Completion:** 68% (Phase 0, Phase 1A, Phase 1B, Phase 2A, Phase 2B, Phase 2C, Phase 3A, Phase 3B, Phase 3C, Phase 3D, and Phase 4A completed; Phase 4B.1 implemented and security-corrected)
+- **Active Phase:** Phase 4B.2 Implemented (Pending Review) — Document Ingestion & Chunking Service Verified
+- **Overall Completion:** 70% (Phase 0, Phase 1A, Phase 1B, Phase 2A, Phase 2B, Phase 2C, Phase 3A, Phase 3B, Phase 3C, Phase 3D, Phase 4A, Phase 4B.1 completed; Phase 4B.2 implemented and verified)
 - **Status Date:** 2026-11-03
 
 ---
@@ -83,9 +83,24 @@
     - [x] Sensitive value rejection for bearer tokens, JWTs, private keys, and credential assignments.
     - [x] Secure `source_ref` handling: strip query tokens, strip unsafe fragments, preserve safe section anchors (`^[A-Za-z0-9_.-]+$`), reject embedded/percent-encoded credentials, reject absolute paths, home directories, and traversal segments.
 - [x] Knowledge schemas unit test suite implemented and verified (`tests/test_knowledge_schemas.py`, 28/28 passing).
+- [x] Document Ingestion & Chunking Service implemented (`backend/app/services/document_ingestion.py`) [Phase 4B.2 Implemented - Audit Corrections Applied]:
+  - [x] Supported source types: OpenAPI specs (via `OpenAPIParser`), Markdown/text documentation, sanitized `FailureClassification` and history.
+  - [x] Workspace-rooted component-by-component traversal with `O_DIRECTORY | O_NOFOLLOW` directory descriptors, `fstat()` validation, and bounded 1MB read loop.
+  - [x] Collision-resistant source and document identity with Unicode NFC normalization, root namespacing, and path fingerprinting.
+  - [x] Chunk identity independent of whole-document content hash, based on source identity, semantic scope, part index, and chunk content hash.
+  - [x] OpenAPI extraction safety: `MAX_SCHEMA_DEPTH = 4`, `MAX_OPERATION_PARAMETERS = 30`, `MAX_OPERATION_RESPONSES = 10`, cumulative `MAX_OPERATION_TOTAL_PROPERTIES = 80`, max description 1024 chars, local circular `$ref` preservation, sensitive property stripping.
+  - [x] Three-tier content sanitization policy (Category A structural drop, Category B redaction, Category C quarantine) with separate typed `IngestionResult` and `IngestionWarning` representations.
+  - [x] Strict chunk size ceilings (2048 chars max), max 100 chunks per document, soft 50-char minimum, hierarchical sentence-aware splitting, deterministic metadata, and fixed timestamp injection.
+  - [x] Endpoint provenance verification for failure history against `spec.endpoints`.
+  - [x] Targeted Audit Corrections:
+    - [x] F-01: Update `compute_source_slug` and document ID construction to incorporate full 16-character source fingerprint while preserving readability and `MAX_ID_LEN <= 128`.
+    - [x] F-02: Add focused directory-as-file rejection test through non-regular file check, verifying zero documents or chunks produced.
+    - [x] F-03: Add focused file-growth test simulating concurrent post-`fstat` size expansion, verifying bounded read raises `DocumentSizeLimitError` without returning oversized data.
+    - [x] F-04: Add focused file-descriptor leak test tracking operation-specific descriptors during partial traversal failure, verifying all descriptors are closed and invalid (`EBADF`).
+- [x] Document Ingestion unit test suite implemented and verified (`tests/test_document_ingestion.py`, 40/40 passing).
 
 ### Work In Progress
-- [ ] Phase 4B: RAG Knowledge Base & Standard Specification Ingestion (Phase 4B.1 Corrected - Pending Final Review).
+- [ ] Phase 4B: RAG Knowledge Base & Standard Specification Ingestion (Phase 4B.2 Implemented - Audit Corrections Applied).
 - [ ] Phase 4C: Root Cause Hypothesis Generator & Bounded Retest Loop.
 
 ### Pending Work
@@ -175,7 +190,9 @@
   - 56 / 56 test scenarios PASSED (`pytest`).
 - RAG Knowledge Schemas unit test suite (`tests/test_knowledge_schemas.py`):
   - 28 / 28 test scenarios PASSED (`pytest`).
-- **Total Verification Count:** 259 / 259 tests passing across all suites (247 pytest + 12 mock API) with zero regressions.
+- Document Ingestion and Chunking unit test suite (`tests/test_document_ingestion.py`):
+  - 40 / 40 test scenarios PASSED (`pytest`).
+- **Total Verification Count:** 299 / 299 tests passing across all suites (287 pytest + 12 mock API) with zero regressions.
 
 ---
 
