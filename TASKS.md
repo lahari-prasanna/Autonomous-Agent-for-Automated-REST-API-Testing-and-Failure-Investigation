@@ -133,12 +133,60 @@
 - [x] Add graph test suite in `tests/test_agent_graph.py` (14/14 passing).
 - [x] Full test suite regression verification (149 pytest + 12 mock API = 161 passing checks).
 
+### Phase 3D: End-to-End Integration Testing & Validation
+- [x] Implement comprehensive E2E integration test suite (`tests/test_agent_integration.py`):
+  - [x] Ephemeral loopback ASGI server lifecycle with pre-bound socket passing (`sockets=[sock]`) eliminating port race conditions.
+  - [x] Process-level database isolation (`reset_mock_db`) restoring initial product database state between tests.
+  - [x] Deterministic latency simulation via custom ASGI middleware and `X-Test-Delay` header without global monkey-patching.
+  - [x] 14 end-to-end integration scenarios verifying compiled LangGraph workflow:
+    - [x] Scenario 1: Successful GET `/api/products` (200 OK + JSON schema validation).
+    - [x] Scenario 2: Successful POST `/api/products` (201 Created + schema validation).
+    - [x] Scenario 3: Successful DELETE `/api/products/{product_id}` (204 No Content).
+    - [x] Scenario 4: Operation selection by OpenAPI `operationId` (`list_products_api_products_get`).
+    - [x] Scenario 5: HTTP 401 Unauthorized reaches `evaluate_response_node`.
+    - [x] Scenario 6: HTTP 404 Not Found reaches `evaluate_response_node`.
+    - [x] Scenario 7: HTTP 400 Bad Request boundary reaches `evaluate_response_node`.
+    - [x] Scenario 8: HTTP 500 Server defect reaches `evaluate_response_node`.
+    - [x] Scenario 9: Invalid OpenAPI spec path halts at `load_spec` -> `END`.
+    - [x] Scenario 10: Non-existent operation halts at `select_operation` -> `END`.
+    - [x] Scenario 11: Missing base URL halts at `prepare_request` -> `END`.
+    - [x] Scenario 12: Deterministic HTTP execution timeout halts at `execute_request` -> `END`.
+    - [x] Scenario 13: Connection refused / network error halts at `execute_request` -> `END`.
+    - [x] Scenario 14: SSRF private IP blocked before socket creation halts at `execute_request` -> `END`.
+- [x] Add integration test suite (`tests/test_agent_integration.py`) (14/14 passing).
+- [x] Full regression verification (163 pytest + 12 mock API = 175 passing checks).
+
 ---
 
 ## Phase 4: Failure Investigation Engine, RAG, & Retest Loop
+### Phase 4A: Deterministic Failure Classification Engine
+- [x] Implement structured failure schemas (`backend/app/schemas/failure.py`):
+  - [x] Failure taxonomy enum (`FailureCategory`) with 15 categories including `EVALUATION_INCOMPLETE`.
+  - [x] Severity enum (`FailureSeverity`) and structured conservative retry models (`RetryPolicy`, `RetryGuidance`).
+  - [x] Allowlist-based sanitized diagnostic evidence (`SanitizedFailureEvidence`).
+  - [x] Top-level serializable classification outcome model (`FailureClassification`).
+- [x] Implement deterministic classification service (`backend/app/services/failure_classifier.py`):
+  - [x] Strict lifecycle error precedence over execution/assertion envelopes.
+  - [x] Mandatory `EVALUATION_INCOMPLETE` flagging on completed HTTP exchange without assertion report (for all status codes).
+  - [x] Evaluated contract success trust verification requiring `status == 'evaluated'` and zero active errors.
+  - [x] Undeclared 5xx classification as `SERVER_ERROR` with `UNEXPECTED_HTTP_STATUS` secondary (strictly 500-599 and undeclared).
+  - [x] Contract-compliant declared 4xx and 5xx responses preserved as successful tests; declared 5xx failing schema check classified as `RESPONSE_SCHEMA_MISMATCH` with zero `SERVER_ERROR` secondary.
+  - [x] Fresh execution state contract (`create_fresh_run_state`): rejects transient overrides (`status`, `error`, `execution_result`, `assertion_report`) with `ValueError`, and unconditionally resets transient fields to clean initial values.
+  - [x] Safe, bounded, JSON-serializable history: purges raw Pydantic models, request/response bodies, raw headers, auth tokens, cookies, assertion actuals, and details into compact allowlisted records capped at 5 entries.
+  - [x] Workflow invocation contract (`run_agent_workflow`): public async wrapper calling `create_fresh_run_state()`, executing `agent_graph.ainvoke()`, and returning final state.
+  - [x] Hierarchical precedence between unexpected HTTP statuses and specific client-status categories.
+  - [x] Distinct classification of transport failures, timeouts, and SSRF blocks.
+  - [x] Idempotency-aware conservative retry guidance (RFC 9110 method heuristic).
+  - [x] Allowlist-based evidence sanitization stripping secrets, tokens, credentials, query values, and raw bodies.
+- [x] Add comprehensive unit test suite (`tests/test_failure_classifier.py`) (56/56 passing).
+- [x] Full regression verification (219 pytest + 12 mock API = 231 passing checks).
+
+### Phase 4B: RAG Knowledge Base & Standard Specification Ingestion
 - [ ] Setup ChromaDB vector store (`backend/app/services/rag_service.py`):
   - [ ] Ingest standard HTTP specifications (RFC 9110) and API validation guidelines.
   - [ ] Implement vector similarity search for failed status codes and headers.
+
+### Phase 4C: Root Cause Hypothesis Generator & Bounded Retest Loop
 - [ ] Implement `investigate_failures_node`:
   - [ ] Gather deterministic failure evidence (sent payload, response body, headers).
   - [ ] Query RAG knowledge base for contextual standards.

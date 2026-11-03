@@ -495,3 +495,360 @@
 - **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
 - **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
 - **Total Test Count:** 161 / 161 PASSED (149 pytest + 12 mock API, 0 regressions).
+
+---
+
+## Entry 011 — Phase 3D: End-to-End Integration Testing & Agent Pipeline Validation
+- **Date:** 2026-11-02
+- **Phase:** Phase 3D (End-to-End Integration Testing & Validation)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+1. Implement real loopback end-to-end integration tests in `tests/test_agent_integration.py` driving the full compiled LangGraph workflow (`agent_graph.ainvoke(initial_state)`).
+2. Run against a live, in-process background Uvicorn server executing `mock_api.main.app`.
+3. Eliminate ephemeral port race conditions by binding socket `127.0.0.1:0` upfront and handing the pre-bound socket to Uvicorn via `server.run(kwargs={'sockets': [sock]})`.
+4. Ensure test database isolation via autouse fixture (`reset_mock_db`) snapshotting and restoring `PRODUCTS_DB` and `_next_id` across test executions.
+5. Provide deterministic timeout simulation via non-intrusive ASGI latency wrapper (`DelayASGIWrapper`) inspecting `X-Test-Delay` headers without global monkey-patching or production alterations.
+6. Verify 14 approved integration scenarios:
+   - Scenario 1: Successful GET `/api/products` (200 OK + JSON schema validation).
+   - Scenario 2: Successful POST `/api/products` (201 Created + schema validation).
+   - Scenario 3: Successful DELETE `/api/products/{product_id}` (204 No Content).
+   - Scenario 4: Operation selection by OpenAPI `operationId` (`list_products_api_products_get`).
+   - Scenario 5: HTTP 401 Unauthorized reaches `evaluate_response_node` and produces assertion report.
+   - Scenario 6: HTTP 404 Not Found reaches `evaluate_response_node` and evaluates schema discrepancy.
+   - Scenario 7: HTTP 400 Bad Request boundary reaches `evaluate_response_node`.
+   - Scenario 8: HTTP 500 Server defect reaches `evaluate_response_node` and flags defect assertions.
+   - Scenario 9: Invalid OpenAPI spec path halts early at `load_spec` -> `END`.
+   - Scenario 10: Non-existent operation halts early at `select_operation` -> `END`.
+   - Scenario 11: Missing base URL halts early at `prepare_request` -> `END`.
+   - Scenario 12: Deterministic HTTP execution timeout halts at `execute_request` -> `END`.
+   - Scenario 13: Connection refused / network error halts at `execute_request` -> `END`.
+   - Scenario 14: SSRF private IP blocked before socket creation halts at `execute_request` -> `END`.
+7. Enforce zero modifications to Phase 1, Phase 2, or completed Phase 3 production services.
+8. Enforce zero external network calls; keep all traffic strictly isolated to loopback (`safe_dev_mode=True`).
+
+### Actions Taken & Files Changed
+- **Integration Test Suite Created:** `tests/test_agent_integration.py`:
+  - `DelayASGIWrapper` (`__test__ = False` to prevent pytest collection warnings) adding asynchronous sleep upon receiving `X-Test-Delay`.
+  - `live_mock_server` fixture binding to `127.0.0.1:0`, passing the open socket to `uvicorn.Server.run(kwargs={'sockets': [sock]})`, polling `/api/health` with `X-Controlled-Mock-API` verification, and cleanly exiting via `server.should_exit = True`.
+  - `reset_mock_db` fixture performing deep copy of `PRODUCTS_DB` and integer snapshot of `_next_id`.
+  - All 14 integration test functions implemented using `@pytest.mark.anyio` and `await agent_graph.ainvoke(initial_state)`.
+- **Documentation Updated:**
+  - `TASKS.md`: Added Phase 3D itemization and marked all tasks complete.
+  - `PROJECT_STATUS.md`: Advanced active phase to Phase 3D Complete (60% overall progress), tracking 175 passing verification checks.
+  - `DEVELOPMENT_LOG.md`: Added Entry 011.
+
+### Test Results
+- **Phase 3D Integration Tests (`tests/test_agent_integration.py`):** 14 / 14 PASSED.
+- **Phase 3C Agent Graph Tests (`tests/test_agent_graph.py`):** 14 / 14 PASSED.
+- **Phase 3B Agent Nodes Tests (`tests/test_agent_nodes.py`):** 23 / 23 PASSED.
+- **Phase 3A Agent State Tests (`tests/test_agent_state.py`):** 7 / 7 PASSED.
+- **Phase 2C Assertion Evaluator Tests (`tests/test_assertion_evaluator.py`):** 29 / 29 PASSED.
+- **Phase 2B HTTP Executor Tests (`tests/test_executor.py`):** 26 / 26 PASSED.
+- **Phase 2A Security Tests (`tests/test_security.py`):** 38 / 38 PASSED.
+- **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
+- **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
+- **Total Test Count:** 175 / 175 PASSED (163 pytest + 12 mock API, 0 regressions).
+
+---
+
+## Entry 013 — Phase 4A: Implementation of Audit Corrections (SERVER_ERROR Boundary & Fresh Execution State)
+- **Date:** 2026-11-02
+- **Phase:** Phase 4A (Failure Classification Engine — Audit Corrections)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+1. Implement **Correction 1 (SERVER_ERROR Boundary)**:
+   - Assign `SERVER_ERROR` strictly when $500 \le \text{status\_code} \le 599$ and `matched_status_key is None`.
+   - Remove `SERVER_ERROR` from secondary categories for declared 5xx responses failing schema validation (primary must remain `RESPONSE_SCHEMA_MISMATCH`).
+   - Preserve successful evaluation of declared 5xx responses satisfying contract schemas.
+   - Update `test_declared_503_failing_schema_check` and retain/expand explicit declared vs. undeclared 5xx tests.
+2. Implement **Correction 2 (Fresh Execution State Contract)**:
+   - Ensure new workflow invocations receive clean transient execution state (`status="idle"`, `error=None`, `execution_result=None`, `assertion_report=None`).
+   - Ensure prior successful state is never falsely credited as a current success upon re-initialization.
+   - Preserve reusable configuration (`spec`, `raw_spec`, `selected_operation`, `target_path`, `target_method`, `target_operation_id`, `request_config`, and safe `metadata`).
+   - Archive past execution results into `metadata["history"]` for audit and future RAG diagnostics without contaminating active state.
+   - Maintain full backwards compatibility with existing Phase 3 callers (`create_initial_state`).
+3. Add comprehensive regression tests verifying both corrections.
+4. Run full test suites and ensure zero regressions across all phases.
+
+### Actions Taken & Files Changed
+- **Failure Classifier Service Updated (`backend/app/services/failure_classifier.py`):**
+  - Updated line 528: `secondary_cats = []` on declared response schema mismatches, strictly eliminating `SERVER_ERROR` from secondary categories on declared 5xx responses.
+  - Implemented `create_fresh_run_state(prior_state=None, **overrides)` archiving previous active outcomes (`execution_result`, `assertion_report`, `error`, `status`) into `metadata["history"]`, resetting active transient fields to `"idle"` and `None`, preserving reusable configuration, deep-copying mutable containers, and applying overrides.
+  - Attached helper as `FailureClassifier.create_fresh_run_state = staticmethod(create_fresh_run_state)`.
+- **Test Suite Updated (`tests/test_failure_classifier.py`):**
+  - Updated `test_declared_503_failing_schema_check` asserting `FailureCategory.SERVER_ERROR not in classification.secondary_categories` and `classification.secondary_categories == []`.
+  - Added `test_undeclared_503_server_defect` asserting `SERVER_ERROR` + `UNEXPECTED_HTTP_STATUS` with `UNSAFE_NON_IDEMPOTENT` on POST.
+  - Added Group 11 (Fresh Execution State Contract) with 5 dedicated regression tests:
+    1. `test_fresh_run_prior_successful_state_reused`: Verifies prior `status="evaluated"` and `assertion_report` are reset to `"idle"` and `None` (archived in `metadata["history"]`), and unexecuted classification returns `UNKNOWN_FAILURE` (never prior success).
+    2. `test_fresh_run_prior_failed_state_reused`: Verifies prior `status="error"` and `error=AgentError(...)` are cleared from active state and archived in `history`.
+    3. `test_fresh_run_completes_evaluation_successfully`: Verifies a fresh run that executes and populates fresh `status="evaluated"` and `assertion_report.is_success=True` is classified as `has_failure=False, primary_category=None`.
+    4. `test_fresh_run_reusable_configuration_survives_initialization`: Verifies `spec`, `raw_spec`, `selected_operation`, `target_path`, `target_method`, `target_operation_id`, `request_config`, `metadata["base_url"]`, and `metadata["safe_dev_mode"]` survive initialization.
+    5. `test_fresh_run_no_previous_result_accepted_as_new_result`: Verifies active `execution_result` and `assertion_report` strictly reflect the new run and never the prior run.
+- **Backwards Compatibility Preserved:** Zero modifications to Phase 1, Phase 2, or Phase 3 production files (`state.py`, `nodes.py`, `graph.py`, `http_executor.py`, `assertion_evaluator.py`, `security.py`, `spec_parser.py`, `mock_api/main.py`).
+
+### Test Results
+- **Phase 4A Failure Classifier Tests (`tests/test_failure_classifier.py`):** 32 / 32 PASSED.
+- **Phase 3D Integration Tests (`tests/test_agent_integration.py`):** 14 / 14 PASSED.
+- **Phase 3C Agent Graph Tests (`tests/test_agent_graph.py`):** 14 / 14 PASSED.
+- **Phase 3B Agent Nodes Tests (`tests/test_agent_nodes.py`):** 23 / 23 PASSED.
+- **Phase 3A Agent State Tests (`tests/test_agent_state.py`):** 7 / 7 PASSED.
+- **Phase 2C Assertion Evaluator Tests (`tests/test_assertion_evaluator.py`):** 29 / 29 PASSED.
+- **Phase 2B HTTP Executor Tests (`tests/test_executor.py`):** 26 / 26 PASSED.
+- **Phase 2A Security Tests (`tests/test_security.py`):** 38 / 38 PASSED.
+- **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
+- **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
+- **Total Test Count:** 207 / 207 PASSED (195 pytest + 12 mock API, 0 regressions).
+---
+
+## Entry 014 — Phase 4A: Implementation of Final Audit Corrections (Transient Protection, Safe History & Invocation Wrapper)
+- **Date:** 2026-11-02
+- **Phase:** Phase 4A (Failure Classification Engine — Final Audit Corrections)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+1. Protect transient state from caller overrides:
+   - Reject forbidden transient override keys (`status`, `error`, `execution_result`, `assertion_report`) with `ValueError`.
+   - Apply safe configuration overrides and unconditionally enforce fresh transient defaults (`status='idle'`, `error=None`, `execution_result=None`, `assertion_report=None`).
+2. Make historical state safe, serializable, and bounded:
+   - Purge raw Pydantic execution/assertion objects from `metadata["history"]`.
+   - Implement compact allowlisted history entries containing only safe primitives (`status`, `method`, `path_template`, `status_code`, `latency_ms`, `passed_assertions`, `failed_assertions`, `error_type`, `error_step`).
+   - Explicitly exclude bodies, headers, auth tokens, cookies, API keys, passwords, URL query values, assertion `actual` values, and tracebacks.
+   - Cap history at 5 entries, preserving chronological order.
+   - Sanitize existing history when carrying it forward into new states.
+   - Ensure `metadata["history"]` is directly JSON-serializable.
+3. Establish workflow invocation contract:
+   - Implement public async wrapper `run_agent_workflow(prior_state=None, **overrides)` in `backend/app/services/failure_classifier.py`.
+   - Wrapper invokes `create_fresh_run_state()`, executes `agent_graph.ainvoke()`, and returns the final state.
+   - Document that production callers must use `run_agent_workflow()` to guarantee clean transient state.
+4. Add comprehensive regression tests covering all 4 audit items:
+   - Attempts to override each transient field.
+   - Secret and body sanitization in history.
+   - Direct JSON serialization of fresh state and history.
+   - Chronological ordering across 3 consecutive runs.
+   - Bounded history capping at 5 entries.
+   - Sanitization of existing unsafe history.
+   - Execution of `run_agent_workflow()` wrapper with clean transient initialization.
+
+### Actions Taken & Files Changed
+- **Failure Classifier Service (`backend/app/services/failure_classifier.py`):**
+  - Updated `create_fresh_run_state()`:
+    - Added validation raising `ValueError` on any transient override key.
+    - Implemented `_extract_compact_history_entry()` and `_sanitize_history_entry()`.
+    - Enforced 5-entry history limit (`sanitized_history[-5:]`).
+    - Enforced clean transient defaults unconditionally.
+  - Implemented and exported public async wrapper `run_agent_workflow()`.
+  - Attached both helpers to `FailureClassifier` (`create_fresh_run_state`, `run_agent_workflow`).
+- **Unit Test Suite (`tests/test_failure_classifier.py`):**
+  - Updated Group 11 tests to assert compact allowlisted history dictionaries.
+  - Added 7 new regression tests:
+    - `test_fresh_run_rejects_transient_overrides`
+    - `test_fresh_run_history_sanitization_excludes_secrets_and_bodies`
+    - `test_fresh_run_history_json_serialization`
+    - `test_fresh_run_three_consecutive_runs_history_ordering`
+    - `test_fresh_run_history_capped_at_five_entries`
+    - `test_fresh_run_sanitizes_existing_unsafe_history`
+    - `test_run_agent_workflow_invokes_graph_with_fresh_transient_state`
+  - Total Phase 4A unit tests expanded from 32 to 39 tests.
+
+### Test Results
+- **Phase 4A Failure Classifier Tests (`tests/test_failure_classifier.py`):** 39 / 39 PASSED.
+- **Phase 3D Integration Tests (`tests/test_agent_integration.py`):** 14 / 14 PASSED.
+- **Phase 3C Agent Graph Tests (`tests/test_agent_graph.py`):** 14 / 14 PASSED.
+- **Phase 3B Agent Nodes Tests (`tests/test_agent_nodes.py`):** 23 / 23 PASSED.
+- **Phase 3A Agent State Tests (`tests/test_agent_state.py`):** 7 / 7 PASSED.
+- **Phase 2C Assertion Evaluator Tests (`tests/test_assertion_evaluator.py`):** 29 / 29 PASSED.
+- **Phase 2B HTTP Executor Tests (`tests/test_executor.py`):** 26 / 26 PASSED.
+- **Phase 2A Security Tests (`tests/test_security.py`):** 38 / 38 PASSED.
+- **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
+- **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
+- **Total Test Count:** 214 / 214 PASSED (202 pytest + 12 mock API, 0 regressions).
+
+---
+
+## Entry 015 — Phase 4A: Implementation of History Sanitization Hardening (Malformed History Defense, String Clamping & Concrete Path Protection)
+- **Date:** 2026-11-02
+- **Phase:** Phase 4A (Failure Classification Engine — History Sanitization Hardening)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+1. Safely handle malformed legacy history:
+   - Implement defensive getter `_safe_get(obj, key, default=None)` supporting dictionaries, Pydantic models, and primitives.
+   - Never call `.get()` or unverified `getattr` on arbitrary objects or primitives (prevents `AttributeError`).
+   - Safely skip malformed entries (primitives, None, arrays, unrecognized/empty dicts) or convert legacy entries into minimal sanitized records.
+   - Ensure fresh state creation never crashes because of malformed legacy history.
+2. Enforce string length limits across all history records:
+   - Define `MAX_STR_LEN = 64`, `MAX_PATH_LEN = 256`, and `MAX_HISTORY_ENTRIES = 5`.
+   - Implement `_clean_string(val, max_len)` to enforce string type validation, strip whitespace, and clamp to maximum length.
+   - Prohibit converting arbitrary objects (dicts, lists, models) via `str()` into stored string representations.
+   - Enforce boolean-safe numeric validation (`_clean_int`, `_clean_float`) preventing `isinstance(True, int)` from accepting booleans as status codes or assertion counts.
+   - Consistently clamp all stored strings: `status` (64), `method` (16), `path_template` (256), `error_type` (64), and `error_step` (64).
+3. Prevent concrete path leakage:
+   - In history entries, extract `path_template` strictly from verified OpenAPI endpoint templates (`selected_operation.path` or `assertion_report.endpoint_path`).
+   - Eliminate fallbacks to unverified `target_path` or raw execution URLs that could leak concrete IDs (e.g. `/api/customers/999-88-7777`), sensitive query parameters, or tokens.
+   - Store `None` when no verified OpenAPI endpoint template is available.
+4. Add focused regression tests covering all history sanitization boundaries:
+   - Malformed legacy history handling without exceptions.
+   - String length clamping at 64 and 256 character boundaries, with type validation.
+   - Concrete path leakage prevention when OpenAPI templates are missing.
+   - Verified path template preservation from OpenAPI spec and assertion report.
+
+### Actions Taken & Files Changed
+- **Failure Classifier Service (`backend/app/services/failure_classifier.py`):**
+   - Added standard library `math` import.
+   - Defined `MAX_STR_LEN = 64`, `MAX_PATH_LEN = 256`, `MAX_HISTORY_ENTRIES = 5`.
+   - Implemented defensive helper `_safe_get(obj, key, default=None)` with callable filtering and exception suppression.
+   - Implemented type-safe sanitization helpers `_clean_string`, `_clean_int`, and `_clean_float`.
+   - Refactored `_extract_compact_history_entry()`:
+     - `status`: validated string clamped to `MAX_STR_LEN` (64).
+     - `method`: uppercase string clamped to 16 characters.
+     - `path_template`: strictly resolved from `_safe_get(selected_operation, "path")` or `_safe_get(assertion_report, "endpoint_path")`, clamped to `MAX_PATH_LEN` (256). Fallbacks to `target_path` and `execution_result.url` removed.
+     - `status_code`: validated integer in 100..599 (booleans excluded).
+     - `latency_ms`: validated non-negative float (booleans excluded, NaN/Inf excluded).
+     - `passed_assertions` / `failed_assertions`: validated non-negative counts.
+     - `error_type` / `error_step`: validated strings clamped to `MAX_STR_LEN` (64).
+   - Refactored `_sanitize_history_entry()`:
+     - Safely returns `None` for primitives (`str`, `int`, `float`, `bool`, `list`, `tuple`, `set`, `bytes`, `None`).
+     - Safely delegates legacy model extraction via `_safe_get` without direct attribute or dictionary access crashes.
+     - Drops entries with zero substantive data.
+     - Clamps all allowlisted fields consistently.
+   - Exposed constants and helper methods on `FailureClassifier` (`MAX_STR_LEN`, `MAX_PATH_LEN`, `MAX_HISTORY_ENTRIES`, `_safe_get`, `_clean_string`, `_extract_compact_history_entry`, `_sanitize_history_entry`).
+- **Unit Test Suite (`tests/test_failure_classifier.py`):**
+   - Added 4 regression tests:
+     - `test_fresh_run_handles_malformed_legacy_history_safely`
+     - `test_fresh_run_enforces_string_length_limits`
+     - `test_fresh_run_prevents_concrete_path_leakage_when_openapi_template_missing`
+     - `test_fresh_run_path_template_from_verified_sources_only`
+   - Total Phase 4A unit tests expanded from 39 to 43 tests.
+
+### Test Results
+- **Phase 4A Failure Classifier Tests (`tests/test_failure_classifier.py`):** 43 / 43 PASSED.
+- **Phase 3D Integration Tests (`tests/test_agent_integration.py`):** 14 / 14 PASSED.
+- **Phase 3C Agent Graph Tests (`tests/test_agent_graph.py`):** 14 / 14 PASSED.
+- **Phase 3B Agent Nodes Tests (`tests/test_agent_nodes.py`):** 23 / 23 PASSED.
+- **Phase 3A Agent State Tests (`tests/test_agent_state.py`):** 7 / 7 PASSED.
+- **Phase 2C Assertion Evaluator Tests (`tests/test_assertion_evaluator.py`):** 29 / 29 PASSED.
+- **Phase 2B HTTP Executor Tests (`tests/test_executor.py`):** 26 / 26 PASSED.
+- **Phase 2A Security Tests (`tests/test_security.py`):** 38 / 38 PASSED.
+- **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
+- **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
+- **Total Test Count:** 218 / 218 PASSED (206 pytest + 12 mock API, 0 regressions).
+
+---
+
+## Entry 016 — Phase 4A: Implementation of Path Template Security & Provenance Hardening
+- **Date:** 2026-11-02
+- **Phase:** Phase 4A (Failure Classification Engine — Path Template Security & Provenance Hardening)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+1. Implement `_clean_path_template()`:
+   - Accept only strings beginning with `/`.
+   - Reject URLs containing `://`.
+   - Reject query strings (`?`) and fragments (`#`).
+   - Enforce 256-character limit (`MAX_PATH_LEN`).
+   - Return `None` for invalid values.
+2. Validate path provenance in history extraction:
+   - Prefer `selected_operation.path` only when it is a verified OpenAPI `EndpointDefinition` or validated against the parsed specification.
+   - Disallow arbitrary dictionaries or caller overrides from populating `path_template`.
+   - Use `assertion_report.endpoint_path` only when the report confirms a successful OpenAPI endpoint lookup.
+   - Enforce that a failed `endpoint_lookup` strictly results in `path_template=None`.
+3. Apply `_clean_path_template()` in both `_extract_compact_history_entry()` and `_sanitize_history_entry()`.
+4. Add comprehensive regression tests covering all syntax boundaries, failed endpoint lookups, malicious dictionaries, credential/token leakage, and legacy history sanitization.
+
+### Actions Taken & Files Changed
+- **Failure Classifier Service (`backend/app/services/failure_classifier.py`):**
+   - Implemented `_clean_path_template(val, max_len=MAX_PATH_LEN)`.
+   - Updated `_extract_compact_history_entry()`:
+     - Detected failed `endpoint_lookup` assertions from `assertion_report` and forced `path_template=None`.
+     - Checked `selected_operation` provenance: only `EndpointDefinition` instances or spec-matched operations are trusted.
+     - Passed `spec` into `_extract_compact_history_entry()` for dictionary validation.
+     - Sanitized final resolved path via `_clean_path_template()`.
+   - Updated `_sanitize_history_entry()`:
+     - Applied `_clean_path_template()` to `entry["path_template"]`.
+     - Passed `spec` to `_extract_compact_history_entry()` for legacy entries.
+   - Updated `create_fresh_run_state()`:
+     - Passed `spec=prior_dict.get("spec")` to `_extract_compact_history_entry()`.
+   - Exposed `_clean_path_template` on `FailureClassifier`.
+- **Unit Test Suite (`tests/test_failure_classifier.py`):**
+   - Added 5 new regression tests:
+     - `test_clean_path_template_syntax_boundaries`
+     - `test_fresh_run_rejects_failed_endpoint_lookup`
+     - `test_fresh_run_rejects_malicious_selected_operation_dictionary`
+     - `test_fresh_run_rejects_urls_with_credentials_query_tokens_and_fragments`
+     - `test_fresh_run_sanitizes_legacy_history_malicious_path_templates`
+   - Total Phase 4A unit tests expanded from 43 to 48 tests.
+
+### Test Results
+- **Phase 4A Failure Classifier Tests (`tests/test_failure_classifier.py`):** 48 / 48 PASSED.
+- **Phase 3D Integration Tests (`tests/test_agent_integration.py`):** 14 / 14 PASSED.
+- **Phase 3C Agent Graph Tests (`tests/test_agent_graph.py`):** 14 / 14 PASSED.
+- **Phase 3B Agent Nodes Tests (`tests/test_agent_nodes.py`):** 23 / 23 PASSED.
+- **Phase 3A Agent State Tests (`tests/test_agent_state.py`):** 7 / 7 PASSED.
+- **Phase 2C Assertion Evaluator Tests (`tests/test_assertion_evaluator.py`):** 29 / 29 PASSED.
+- **Phase 2B HTTP Executor Tests (`tests/test_executor.py`):** 26 / 26 PASSED.
+- **Phase 2A Security Tests (`tests/test_security.py`):** 38 / 38 PASSED.
+- **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
+- **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
+- **Total Test Count:** 223 / 223 PASSED (211 pytest + 12 mock API, 0 regressions).
+
+---
+
+## Entry 017 — Phase 4A: Specification-Backed Path Provenance & History Sanitization Hardening
+- **Date:** 2026-11-02
+- **Phase:** Phase 4A (Failure Classification Engine — Specification-Backed Path Provenance Hardening)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+1. Address the security audit failures regarding path template provenance and concrete URL leakage into archived history.
+2. Verify every archived `path_template` against actual `spec.endpoints` in the parsed specification.
+3. Prohibit trusting `EndpointDefinition` solely by Python type; require path and method to match `spec.endpoints`.
+4. Prohibit arbitrary dictionaries and caller-supplied objects from establishing path provenance independently.
+5. Permit `assertion_report.endpoint_path` ONLY when:
+   - A parsed specification exists.
+   - An explicit `endpoint_lookup` assertion exists and passed.
+   - No conflicting failed lookup exists.
+   - The report path matches an actual endpoint template in `spec.endpoints`.
+   - The method matches when available.
+6. Enforce that missing or failed endpoint lookups strictly result in `path_template=None`.
+7. Prohibit fallbacks to `target_path`, execution URLs, or concrete request paths.
+8. Always apply `_clean_path_template()` after specification matching.
+9. Add 8 focused regression tests and re-verify complete test suites with zero regressions.
+
+### Actions Taken & Files Changed
+- **Failure Classifier Service (`backend/app/services/failure_classifier.py`):**
+  - Implemented `_match_spec_endpoint_path(candidate_path, candidate_method, spec)` validating candidate route template and method against actual `spec.endpoints`.
+  - Refactored `_extract_compact_history_entry()`:
+    - Step A: `isinstance(selected_operation, EndpointDefinition) and spec is not None` -> verified via `_match_spec_endpoint_path`. Arbitrary dictionaries or untrusted objects are ignored.
+    - Step B: If not resolved from `selected_operation`, evaluates `assertion_report.endpoint_path` ONLY when `spec is not None`, an explicit `endpoint_lookup` assertion exists with `passed is True`, and `has_failed_lookup is False`. Verifies against `spec.endpoints` via `_match_spec_endpoint_path`.
+    - Missing or failed `endpoint_lookup` strictly results in `path_template = None`.
+    - Always applies `_clean_path_template(resolved_path, MAX_PATH_LEN)` to matched paths.
+    - Removed all fallbacks to `target_path` and `execution_result.url`.
+  - Updated `_sanitize_history_entry()` to apply `_clean_path_template` on compact history entries, and pass `spec` to legacy entries.
+  - Exposed `_clean_path_template` and `_match_spec_endpoint_path` on `FailureClassifier`.
+- **Unit Test Suite (`tests/test_failure_classifier.py`):**
+  - Added `sample_spec` fixture and updated existing tests to pass `spec=sample_spec`.
+  - Added 8 comprehensive regression tests:
+    - `test_provenance_rejects_concrete_id_in_assertion_report_even_when_lookup_passes`
+    - `test_provenance_rejects_unlisted_path_even_when_lookup_passes`
+    - `test_provenance_rejects_missing_endpoint_lookup_in_assertion_report`
+    - `test_provenance_rejects_failed_endpoint_lookup_in_assertion_report`
+    - `test_provenance_rejects_arbitrary_endpoint_definition_with_malicious_path_not_in_spec`
+    - `test_provenance_preserves_genuine_endpoint_from_parsed_spec`
+    - `test_provenance_rejects_method_mismatches`
+    - `test_provenance_ensures_zero_sensitive_values_enter_serialized_history`
+  - Total Phase 4A unit tests expanded from 48 to 56 tests.
+
+### Test Results
+- **Phase 4A Failure Classifier Tests (`tests/test_failure_classifier.py`):** 56 / 56 PASSED.
+- **Phase 3D Integration Tests (`tests/test_agent_integration.py`):** 14 / 14 PASSED.
+- **Phase 3C Agent Graph Tests (`tests/test_agent_graph.py`):** 14 / 14 PASSED.
+- **Phase 3B Agent Nodes Tests (`tests/test_agent_nodes.py`):** 23 / 23 PASSED.
+- **Phase 3A Agent State Tests (`tests/test_agent_state.py`):** 7 / 7 PASSED.
+- **Phase 2C Assertion Evaluator Tests (`tests/test_assertion_evaluator.py`):** 29 / 29 PASSED.
+- **Phase 2B HTTP Executor Tests (`tests/test_executor.py`):** 26 / 26 PASSED.
+- **Phase 2A Security Tests (`tests/test_security.py`):** 38 / 38 PASSED.
+- **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
+- **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
+- **Total Test Count:** 231 / 231 PASSED (219 pytest + 12 mock API, 0 regressions).

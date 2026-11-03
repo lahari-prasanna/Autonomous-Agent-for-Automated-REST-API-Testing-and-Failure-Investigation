@@ -1,8 +1,8 @@
 # Project Status
 
 ## Current Status Overview
-- **Active Phase:** Phase 3C Completed — LangGraph Workflow Assembly & Conditional Routing Verified
-- **Overall Completion:** 55% (Phase 0, Phase 1A, Phase 1B, Phase 2A, Phase 2B, Phase 2C, Phase 3A, Phase 3B, and Phase 3C completed)
+- **Active Phase:** Phase 4A Completed — Deterministic Failure Classification Engine Verified
+- **Overall Completion:** 65% (Phase 0, Phase 1A, Phase 1B, Phase 2A, Phase 2B, Phase 2C, Phase 3A, Phase 3B, Phase 3C, Phase 3D, and Phase 4A completed)
 - **Status Date:** 2026-11-02
 
 ---
@@ -53,9 +53,30 @@
   - [x] Seamless handling of schema assertion failures as evaluated reports rather than routing errors.
   - [x] Clean public interfaces: `build_agent_graph()`, `compile_agent_graph()`, `agent_graph`.
 - [x] Agent Graph test suite implemented and verified (`tests/test_agent_graph.py`, 14/14 passing).
+- [x] End-to-End Integration Test Suite implemented (`tests/test_agent_integration.py`):
+  - [x] Pre-bound ephemeral loopback socket passing (`sockets=[sock]`) eliminating port binding race conditions.
+  - [x] Test-level mock database state snapshotting and restoration fixture (`reset_mock_db`).
+  - [x] Non-intrusive ASGI latency simulation wrapper (`DelayASGIWrapper`) supporting deterministic timeout verification.
+  - [x] 14 comprehensive end-to-end integration scenarios verifying live workflow execution, schema evaluations, 4xx/5xx handling, error termination branches, timeouts, network failures, and SSRF security guard blocks.
+  - [x] All 14 integration test scenarios PASSED (14/14 passing).
+- [x] Deterministic Failure Classification Engine implemented (`backend/app/schemas/failure.py`, `backend/app/services/failure_classifier.py`):
+  - [x] Structured failure schemas: `FailureCategory` (15 distinct taxonomy values), `FailureSeverity`, `RetryPolicy`, `RetryGuidance`, `SanitizedFailureEvidence`, and `FailureClassification`.
+  - [x] Strict lifecycle error precedence over execution/assertion envelopes.
+  - [x] Mandatory `EVALUATION_INCOMPLETE` flagging on completed HTTP exchange without assertion report (for all status codes 100-599).
+  - [x] Evaluated contract success trust verification requiring `status == 'evaluated'` and zero active errors.
+  - [x] Undeclared 5xx classification as `SERVER_ERROR` with `UNEXPECTED_HTTP_STATUS` secondary (strictly when status is 500-599 and undeclared).
+  - [x] Contract-compliant declared 4xx and 5xx responses preserved as successful tests; declared 5xx failing schema check classified as `RESPONSE_SCHEMA_MISMATCH` with zero `SERVER_ERROR` secondary.
+  - [x] Fresh execution state contract (`create_fresh_run_state`): rejects transient overrides (`status`, `error`, `execution_result`, `assertion_report`) with `ValueError`, enforces clean defaults, and archives compact, allowlisted historical records in `metadata["history"]` capped at 5 entries.
+  - [x] Workflow invocation contract (`run_agent_workflow`): public async wrapper guaranteeing clean transient state initialization before invoking `agent_graph.ainvoke()`.
+  - [x] Precedence between unexpected HTTP statuses and specific client-status categories.
+  - [x] Distinct classification of transport failures, timeouts, and SSRF blocks.
+  - [x] Idempotency-aware conservative retry guidance (RFC 9110 method heuristic).
+  - [x] Allowlist-based evidence sanitization stripping secrets, tokens, credentials, query values, and raw bodies.
+- [x] Failure Classifier unit test suite implemented and verified (`tests/test_failure_classifier.py`, 56/56 passing).
 
 ### Work In Progress
-- [ ] Phase 4: Failure Investigation Engine with RAG & Retesting Loop.
+- [ ] Phase 4B: RAG Knowledge Base & Standard Specification Ingestion.
+- [ ] Phase 4C: Root Cause Hypothesis Generator & Bounded Retest Loop.
 
 ### Pending Work
 - [ ] Phase 4: Failure Investigation Engine with RAG & Retesting Loop.
@@ -138,13 +159,17 @@
   - 23 / 23 test scenarios PASSED (`pytest`).
 - LangGraph Agent Graph unit test suite (`tests/test_agent_graph.py`):
   - 14 / 14 test scenarios PASSED (`pytest`).
-- **Total Verification Count:** 161 / 161 tests passing across all suites (149 pytest + 12 mock API) with zero regressions.
+- LangGraph Agent End-to-End Integration test suite (`tests/test_agent_integration.py`):
+  - 14 / 14 test scenarios PASSED (`pytest`).
+- Deterministic Failure Classifier unit test suite (`tests/test_failure_classifier.py`):
+  - 56 / 56 test scenarios PASSED (`pytest`).
+- **Total Verification Count:** 231 / 231 tests passing across all suites (219 pytest + 12 mock API) with zero regressions.
 
 ---
 
 ## 5. Next Milestone
-**Phase 4: Failure Investigation Engine, RAG & Retesting Loop**
+**Phase 4B: RAG Knowledge Base & Standard Specification Ingestion**
 - ChromaDB vector store integration for RFC HTTP standards (`backend/app/services/rag_service.py`).
-- Root cause hypothesis generator and failure evidence synthesizer (`investigate_failures_node`).
-- Bounded retest decision logic and loop termination guards.
+- Ingestion of RFC 9110 / RFC 9112 specification documents.
+- Semantic vector similarity retrieval using standardized failure classifications.
 
