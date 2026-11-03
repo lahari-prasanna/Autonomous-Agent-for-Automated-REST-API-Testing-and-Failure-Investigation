@@ -852,3 +852,107 @@
 - **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
 - **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
 - **Total Test Count:** 231 / 231 PASSED (219 pytest + 12 mock API, 0 regressions).
+
+---
+
+## Entry 018 — Phase 4B.1: Knowledge Document and Chunk Schemas Implementation
+- **Date:** 2026-11-03
+- **Phase:** Phase 4B.1 (RAG Knowledge Base — Document & Chunk Schemas — Implemented, Pending Review)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+1. Implement strongly-typed, validated Pydantic v2 data models representing knowledge documents and searchable chunks in `backend/app/schemas/knowledge.py`.
+2. Define `KnowledgeSourceType` enumeration supporting:
+   - `openapi_spec`: Parsed OpenAPI specifications.
+   - `api_documentation`: API documentation guides, RFC standards, and developer notes.
+   - `failure_history`: Sanitized historical failure classifications.
+3. Define `KnowledgeDocument` model representing parent ingested knowledge sources with document ID, source type, title, source reference, operation metadata, timestamp, and bounded metadata.
+4. Define `KnowledgeChunk` model representing searchable, self-contained sections of knowledge documents with chunk ID, parent document ID, text content, position index, source type, operation metadata, failure category, provenance, and property alias `text`.
+5. Enforce strict validation:
+   - Reject empty or whitespace-only chunk content.
+   - Enforce sensible maximum lengths across identifiers (128), titles (256), references (512), path templates (256), operation IDs (128), and chunk text (16,384).
+   - Normalize HTTP methods consistently to uppercase standard verbs.
+   - Enforce OpenAPI path template rules (leading `/`, no schemes, no query params, no fragments).
+   - Bound metadata to max 20 entries, reject sensitive keys (passwords, tokens, cookies, auth headers, api keys), and strictly allow safe primitives only.
+   - Forbid extra fields (`extra="forbid"`) to prevent embedding, vector, or secret injection at the schema level.
+   - Keep models cleanly JSON serializable.
+6. Create comprehensive test suite in `tests/test_knowledge_schemas.py` and verify all tests pass with zero regressions.
+
+### Actions Taken & Files Changed
+- **Knowledge Schemas (`backend/app/schemas/knowledge.py`):**
+  - Created `KnowledgeSourceType` enum.
+  - Implemented `KnowledgeDocument` and `KnowledgeChunk` Pydantic v2 models with field validators, model validators, and helper validation functions.
+  - Enforced sensitive key blacklisting and primitive value typing for metadata.
+- **Knowledge Schemas Test Suite (`tests/test_knowledge_schemas.py`):**
+  - Implemented 21 unit tests covering minimal/full models, all source types, missing fields, empty/whitespace rejection, HTTP method normalization, path template validation, max length constraints, metadata security, extra field rejection, JSON serialization round-trips, and parent-document relationships.
+- **Tracking Documentation Updated:**
+  - `TASKS.md`: Added Phase 4B.1 itemization and marked complete (pending review).
+  - `PROJECT_STATUS.md`: Updated active phase to Phase 4B.1 Implemented (Pending Review), tracking 252 passing verification checks.
+  - `DEVELOPMENT_LOG.md`: Added Entry 018.
+
+### Test Results
+- **Phase 4B.1 Knowledge Schemas Tests (`tests/test_knowledge_schemas.py`):** 21 / 21 PASSED.
+- **Phase 4A Failure Classifier Tests (`tests/test_failure_classifier.py`):** 56 / 56 PASSED.
+- **Phase 3D Integration Tests (`tests/test_agent_integration.py`):** 14 / 14 PASSED.
+- **Phase 3C Agent Graph Tests (`tests/test_agent_graph.py`):** 14 / 14 PASSED.
+- **Phase 3B Agent Nodes Tests (`tests/test_agent_nodes.py`):** 23 / 23 PASSED.
+- **Phase 3A Agent State Tests (`tests/test_agent_state.py`):** 7 / 7 PASSED.
+- **Phase 2C Assertion Evaluator Tests (`tests/test_assertion_evaluator.py`):** 29 / 29 PASSED.
+- **Phase 2B HTTP Executor Tests (`tests/test_executor.py`):** 26 / 26 PASSED.
+- **Phase 2A Security Tests (`tests/test_security.py`):** 38 / 38 PASSED.
+- **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
+- **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
+- **Total Test Count:** 252 / 252 PASSED (240 pytest + 12 mock API, 0 regressions).
+
+---
+
+## Entry 019 — Phase 4B.1: Targeted Security Corrections (Metadata Allowlist & Source Reference Hardening)
+- **Date:** 2026-11-03
+- **Phase:** Phase 4B.1 (RAG Knowledge Base — Document & Chunk Schemas — Corrected, Pending Final Review)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+1. Implement the two approved security corrections from the Phase 4B.1 audit:
+   - **Correction 1 (Metadata Allowlist):** Replace the open metadata denylist with an explicit `ALLOWED_METADATA_KEYS` allowlist (`tag`, `category`, `version`, `status_code`, `section`, `doc_format`, `is_deprecated`, `content_type`, `scenario`, `verified`). Apply key-specific type validation (`status_code` in 100..599, booleans for flags, bounded non-empty strings). Scan and reject sensitive credential patterns (bearer tokens, JWTs, private keys, password assignments).
+   - **Correction 2 (Secure Source References):** Parse HTTP/HTTPS references via `urllib.parse.urlsplit`. Reject embedded/percent-encoded credentials. Completely strip query parameters to eliminate token leakage. Preserve safe section anchors matching `^[A-Za-z0-9_.-]+$` while stripping unsafe fragments. Reject absolute local filesystem paths, home-directory references, and path traversal segments.
+2. Expand the unit test suite in `tests/test_knowledge_schemas.py` to cover all new security boundaries.
+3. Re-verify the full regression suite and mock API suite with zero regressions.
+
+### Actions Taken & Files Changed
+- **Knowledge Schemas (`backend/app/schemas/knowledge.py`):**
+  - Defined `ALLOWED_METADATA_KEYS` containing exactly 10 purposeful keys.
+  - Defined `SAFE_FRAGMENT_PATTERN` (`^[A-Za-z0-9_.-]+$`) and `SENSITIVE_VALUE_PATTERNS`.
+  - Implemented `_validate_source_ref()`: rejects URL credentials, strips query parameters, preserves safe fragment anchors, rejects absolute paths, home directories, and traversal segments (`..`).
+  - Implemented `_validate_metadata_dict()`: rejects unapproved keys, enforces key-specific types, and scans string values for credential/token patterns.
+- **Knowledge Schemas Test Suite (`tests/test_knowledge_schemas.py`):**
+  - Updated existing tests to conform to `ALLOWED_METADATA_KEYS`.
+  - Added targeted regression tests covering:
+    - Unknown and denylist keys rejected (`auth`, `passwd`, `bearer`, `private_key`, etc.).
+    - All 10 approved keys accepted with valid data.
+    - Key-specific type validation (`status_code`, `is_deprecated`, `verified`, string non-empty).
+    - Prohibited sensitive credential value patterns.
+    - Source reference query token stripping.
+    - Source reference fragment token stripping and safe anchor preservation.
+    - Source reference embedded/percent-encoded credential rejection.
+    - Source reference absolute path, home directory, and traversal rejection.
+    - Source reference valid relative documentation references.
+    - Serialization hygiene ensuring zero secret leakage.
+  - Suite expanded from 21 to 28 passing unit tests.
+- **Tracking Documentation Updated:**
+  - `TASKS.md`: Updated Phase 4B.1 itemization and test counts.
+  - `PROJECT_STATUS.md`: Advanced status to Phase 4B.1 Corrected (Pending Final Review), tracking 259 passing verification checks.
+  - `DEVELOPMENT_LOG.md`: Added Entry 019.
+
+### Test Results
+- **Phase 4B.1 Knowledge Schemas Tests (`tests/test_knowledge_schemas.py`):** 28 / 28 PASSED.
+- **Phase 4A Failure Classifier Tests (`tests/test_failure_classifier.py`):** 56 / 56 PASSED.
+- **Phase 3D Integration Tests (`tests/test_agent_integration.py`):** 14 / 14 PASSED.
+- **Phase 3C Agent Graph Tests (`tests/test_agent_graph.py`):** 14 / 14 PASSED.
+- **Phase 3B Agent Nodes Tests (`tests/test_agent_nodes.py`):** 23 / 23 PASSED.
+- **Phase 3A Agent State Tests (`tests/test_agent_state.py`):** 7 / 7 PASSED.
+- **Phase 2C Assertion Evaluator Tests (`tests/test_assertion_evaluator.py`):** 29 / 29 PASSED.
+- **Phase 2B HTTP Executor Tests (`tests/test_executor.py`):** 26 / 26 PASSED.
+- **Phase 2A Security Tests (`tests/test_security.py`):** 38 / 38 PASSED.
+- **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
+- **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
+- **Total Test Count:** 259 / 259 PASSED (247 pytest + 12 mock API, 0 regressions).

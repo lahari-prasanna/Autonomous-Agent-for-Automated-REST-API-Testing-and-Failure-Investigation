@@ -182,6 +182,20 @@
 - [x] Full regression verification (219 pytest + 12 mock API = 231 passing checks).
 
 ### Phase 4B: RAG Knowledge Base & Standard Specification Ingestion
+#### Phase 4B.1: Knowledge Document and Chunk Schemas (Corrected - Pending Final Review)
+- [x] Create strongly-typed Pydantic v2 knowledge models (`backend/app/schemas/knowledge.py`):
+  - [x] `KnowledgeSourceType` enum (`openapi_spec`, `api_documentation`, `failure_history`).
+  - [x] `KnowledgeDocument` model with document identifier, source type, title, source reference, operation metadata, timestamp, and bounded metadata.
+  - [x] `KnowledgeChunk` model with chunk identifier, parent document link, content, position index, operation metadata, failure category, provenance, and property alias `text`.
+  - [x] Strict validation & security corrections:
+    - [x] Explicit `ALLOWED_METADATA_KEYS` allowlist (`tag`, `category`, `version`, `status_code`, `section`, `doc_format`, `is_deprecated`, `content_type`, `scenario`, `verified`).
+    - [x] Key-specific value validation (`status_code` in 100..599, booleans for flags, bounded non-empty strings).
+    - [x] Sensitive value rejection for bearer tokens, JWTs, private keys, and credential assignments.
+    - [x] Secure `source_ref` handling: strip query tokens, strip unsafe fragments, preserve safe section anchors (`^[A-Za-z0-9_.-]+$`), reject embedded/percent-encoded credentials, reject absolute paths, home directories, and traversal segments.
+- [x] Add comprehensive unit test suite (`tests/test_knowledge_schemas.py`) (28/28 passing).
+- [x] Full regression verification (247 pytest + 12 mock API = 259 passing checks).
+
+#### Phase 4B.2: Document Ingestion, Chunking & Vector Store Setup
 - [ ] Setup ChromaDB vector store (`backend/app/services/rag_service.py`):
   - [ ] Ingest standard HTTP specifications (RFC 9110) and API validation guidelines.
   - [ ] Implement vector similarity search for failed status codes and headers.

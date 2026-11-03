@@ -1,9 +1,9 @@
 # Project Status
 
 ## Current Status Overview
-- **Active Phase:** Phase 4A Completed — Deterministic Failure Classification Engine Verified
-- **Overall Completion:** 65% (Phase 0, Phase 1A, Phase 1B, Phase 2A, Phase 2B, Phase 2C, Phase 3A, Phase 3B, Phase 3C, Phase 3D, and Phase 4A completed)
-- **Status Date:** 2026-11-02
+- **Active Phase:** Phase 4B.1 Corrected (Pending Final Review) — Knowledge Document & Chunk Schemas Verified
+- **Overall Completion:** 68% (Phase 0, Phase 1A, Phase 1B, Phase 2A, Phase 2B, Phase 2C, Phase 3A, Phase 3B, Phase 3C, Phase 3D, and Phase 4A completed; Phase 4B.1 implemented and security-corrected)
+- **Status Date:** 2026-11-03
 
 ---
 
@@ -73,9 +73,19 @@
   - [x] Idempotency-aware conservative retry guidance (RFC 9110 method heuristic).
   - [x] Allowlist-based evidence sanitization stripping secrets, tokens, credentials, query values, and raw bodies.
 - [x] Failure Classifier unit test suite implemented and verified (`tests/test_failure_classifier.py`, 56/56 passing).
+- [x] Knowledge Document and Chunk Schemas implemented (`backend/app/schemas/knowledge.py`) [Phase 4B.1 Corrected - Pending Final Review]:
+  - [x] `KnowledgeSourceType` enumeration (`openapi_spec`, `api_documentation`, `failure_history`).
+  - [x] Strongly-typed, validated `KnowledgeDocument` model with document identifier, source type, title, source reference, operation metadata, timestamp, and bounded metadata.
+  - [x] Self-contained, independently retrievable `KnowledgeChunk` model with chunk identifier, parent document link, content, position index, operation metadata, failure category, provenance, and property alias `text`.
+  - [x] Targeted Security Corrections:
+    - [x] Explicit `ALLOWED_METADATA_KEYS` allowlist (`tag`, `category`, `version`, `status_code`, `section`, `doc_format`, `is_deprecated`, `content_type`, `scenario`, `verified`).
+    - [x] Key-specific value validation (`status_code` in 100..599, booleans for flags, bounded non-empty strings).
+    - [x] Sensitive value rejection for bearer tokens, JWTs, private keys, and credential assignments.
+    - [x] Secure `source_ref` handling: strip query tokens, strip unsafe fragments, preserve safe section anchors (`^[A-Za-z0-9_.-]+$`), reject embedded/percent-encoded credentials, reject absolute paths, home directories, and traversal segments.
+- [x] Knowledge schemas unit test suite implemented and verified (`tests/test_knowledge_schemas.py`, 28/28 passing).
 
 ### Work In Progress
-- [ ] Phase 4B: RAG Knowledge Base & Standard Specification Ingestion.
+- [ ] Phase 4B: RAG Knowledge Base & Standard Specification Ingestion (Phase 4B.1 Corrected - Pending Final Review).
 - [ ] Phase 4C: Root Cause Hypothesis Generator & Bounded Retest Loop.
 
 ### Pending Work
@@ -163,7 +173,9 @@
   - 14 / 14 test scenarios PASSED (`pytest`).
 - Deterministic Failure Classifier unit test suite (`tests/test_failure_classifier.py`):
   - 56 / 56 test scenarios PASSED (`pytest`).
-- **Total Verification Count:** 231 / 231 tests passing across all suites (219 pytest + 12 mock API) with zero regressions.
+- RAG Knowledge Schemas unit test suite (`tests/test_knowledge_schemas.py`):
+  - 28 / 28 test scenarios PASSED (`pytest`).
+- **Total Verification Count:** 259 / 259 tests passing across all suites (247 pytest + 12 mock API) with zero regressions.
 
 ---
 
