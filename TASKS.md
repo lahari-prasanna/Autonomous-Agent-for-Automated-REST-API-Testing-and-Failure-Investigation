@@ -213,23 +213,62 @@
 - [x] Add comprehensive unit test suite (`tests/test_document_ingestion.py`) (40/40 passing).
 - [x] Full regression verification (287 pytest + 12 mock API = 299 passing checks).
 
-#### Phase 4B.3: Vector Store Setup & Contextual Retrieval
-- [ ] Setup ChromaDB vector store (`backend/app/services/rag_service.py`):
-  - [ ] Ingest standard HTTP specifications (RFC 9110) and API validation guidelines.
-  - [ ] Implement vector similarity search for failed status codes and headers.
+#### Phase 4B.3: Local Knowledge Storage and Indexing
+- [x] Complete Architecture & Design Specification:
+  - [x] Final consolidated architecture specification delivered (`PHASE_4B_3_ARCHITECTURE_FINAL.md`) resolving items C1–C15 and all 20 crash boundaries.
+  - [x] Architecture Revision 17 reviewed and approved.
+- [x] Implement `LocalKnowledgeStore` and Vector Storage (`backend/app/services/knowledge_store.py`):
+  - [x] Setup SQLite ACID coordinator (`coordinator.sqlite3`) with WAL mode, `synchronous=FULL`, foreign keys, strict PRAGMAs, and thread-local connection manager.
+  - [x] Integrate ChromaDB 0.5.5 derived vector store with generation-scoped collections (`chunks_gen_<G>`).
+  - [x] Implement deterministic 384-dimensional hash embedding baseline with symbol fallback, cancellation zero fallback, and unit norm.
+  - [x] Implement injective Chroma document and chunk ID encoders/decoders.
+  - [x] Implement global lock hierarchy ($\mathcal{L}_1 \implies \mathcal{L}_2$: `.writer.lock EX` $\implies$ `.lifecycle.lock EX`) with POSIX `flock` and Win32 `LockFileEx` support.
+  - [x] Implement kernel pin locks, 3-state fail-closed pin probing (`STALE`, `LIVE`, `UNKNOWN`), and query reader session management (`QueryReaderSession`).
+  - [x] Implement atomic cleanup state machine (`RETIRED -> TOMBSTONED -> PURGING -> CANONICAL PURGE`) with verified row-count transitions (`rowcount == 1`).
+  - [x] Implement 18-step migration workflow with durable staging intent and safe retired-generation pruning hierarchy.
+  - [x] Implement startup crash reconciliation (`reconcile_startup`) recovering from all 20 crash boundaries.
+  - [x] Implement filesystem security traversal validation (`openat`/`O_NOFOLLOW` on POSIX, DACL/reparse on Windows, remote mount rejection).
+  - [x] Implement comprehensive 28-test architecture verification suite (`tests/test_local_knowledge_store.py`, 28/28 passing).
+  - [x] Full regression verification (315 passing tests across repository: 28 Phase 4B.3 + 287 existing, 0 regressions).
 
-### Phase 4C: Root Cause Hypothesis Generator & Bounded Retest Loop
-- [ ] Implement `investigate_failures_node`:
-  - [ ] Gather deterministic failure evidence (sent payload, response body, headers).
-  - [ ] Query RAG knowledge base for contextual standards.
-  - [ ] Formulate grounded root-cause hypotheses, evidence links, and remediation steps.
-- [ ] Implement `retest_decision_node`:
-  - [ ] Conditional logic to queue targeted follow-up boundary tests.
-  - [ ] Strict loop termination guard (`retest_iteration >= max_retest_iterations`).
-- [ ] Implement `generate_report_node`:
-  - [ ] Aggregate overall metrics, test breakdown, and failure investigation summaries.
-- [ ] Test end-to-end agentic feedback loop against mock API flaws.
-- [ ] Update documentation and log progress in `DEVELOPMENT_LOG.md`.
+#### Phase 4B.4: Retrieval and Metadata Filtering (Completed)
+- [x] Implement semantic retrieval in `LocalKnowledgeStore` (`backend/app/services/knowledge_store.py`):
+  - [x] Normalized relevance score computation (`compute_relevance_score(distance)` mapping $[0.0, 2.0]$ to $[0.0, 1.0]$).
+  - [x] Stable, immutable `RetrievalResult` model (`chunk: KnowledgeChunk`, `score: float`, `distance: float`).
+  - [x] Validated `RetrievalFilter` model with field allowlists, alias resolution (`path` -> `path_template`), and strict parameter rejection.
+  - [x] SQLite canonical hydration ensuring content and rich metadata come strictly from SQLite `canonical_chunks`.
+  - [x] Strict reader snapshot isolation validating candidates against `captured_active_doc_ids`.
+  - [x] Generation and commit-sequence consistency adhering to pinned reader session tokens.
+  - [x] Bounded candidate expansion preventing premature result truncation when Chroma candidates are filtered by SQLite metadata.
+  - [x] Comprehensive input validation for query text, top_k range, filter keys, and values.
+  - [x] Backward-compatible delegation in `query_chunks()` supporting `return_scores` flag and session helper methods.
+  - [x] Add comprehensive 24-test retrieval verification suite (`tests/test_knowledge_retrieval.py`, 24/24 passing).
+  - [x] Full regression verification (344 passed, 4 skipped on Linux, 0 failures across repository).
+
+### Phase 4C: Retest Controller, Failure Investigation Orchestration & Diagnostic Reporting
+- [x] Implement central boundary sanitization engine (`backend/app/schemas/sanitizer.py`, `ReportDataSanitizer`):
+  - [x] Secret assignment regex, bearer token, JWT, and cookie masking.
+  - [x] Safe URL sanitization with userinfo stripping, query parameter masking, port validation, and bracketed IPv6 reconstruction.
+  - [x] Safe relative source reference validation preserving Phase 4B relative paths and URLs while rejecting traversal and unsafe schemes.
+- [x] Implement immutable retest and diagnostic report schemas (`backend/app/schemas/retest.py`, `backend/app/schemas/report.py`):
+  - [x] Deeply immutable frozen Pydantic models with immutable `Tuple` collections.
+  - [x] Complete DiagnosticReport root validator enforcing mathematical identities, candidate metric partitions, biunique ledger reconciliation, and valid state transitions.
+- [x] Implement Retest Controller (`backend/app/services/retest_controller.py`):
+  - [x] Ephemeral HMAC-SHA256 request fingerprinting for identical-request verification.
+  - [x] RFC-compliant integer delta-seconds and HTTP-date `Retry-After` parsing with bounded delays (max 5.0s, never shortened).
+  - [x] Strict budget tracking with combined ceiling of 2 follow-ups.
+  - [x] Fail-closed variation candidate synthesis denying POST/PATCH mutations by default.
+- [x] Implement Safe Markdown Diagnostic Report Generator (`backend/app/services/report_generator.py`):
+  - [x] HTML and Markdown active character escaping for inline strings.
+  - [x] Inert code-span rendering for URLs, paths, and IDs.
+  - [x] Multiline blockquote formatting for untrusted evidence and recommendations without Markdown table pipe confusion.
+- [x] Implement Outer Workflow Orchestrator (`backend/app/agent/orchestrator.py`):
+  - [x] External wrap treating compiled Phase 3 `agent_graph` as an immutable black box.
+  - [x] Single operation and batch suite execution with bounded concurrency semaphore (1–5).
+  - [x] Unified ordered follow-up ledger (`followup_decisions`) bijectively reconciling with execution records.
+  - [x] Non-fatal failure investigation degradation upon knowledge store exceptions (`investigation_degraded=True`).
+- [x] Implement comprehensive Phase 4C test suites (`tests/test_retest_controller.py`, `tests/test_report_generator.py`, `tests/test_workflow_orchestrator.py`, 37/37 passing).
+- [x] Verify full regression across repository (407 passed, 4 skipped on Linux, 0 failures).
 
 ---
 

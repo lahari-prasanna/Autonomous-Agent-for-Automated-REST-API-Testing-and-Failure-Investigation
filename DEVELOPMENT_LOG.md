@@ -1080,3 +1080,245 @@ Address the four targeted findings identified in the strict independent read-onl
 - **Phase 1B Parser Tests (`tests/test_parser.py`):** 12 / 12 PASSED.
 - **Phase 1A Mock API Tests (`mock_api/verify_api.py`):** 12 / 12 PASSED.
 - **Total Test Count:** 299 / 299 PASSED (287 pytest + 12 mock API, 0 regressions).
+
+---
+
+## Entry 013 — Phase 4B.3: Final Consolidated Architecture Specification Delivered
+- **Date:** 2026-11-03
+- **Phase:** Phase 4B.3 (Local Knowledge Storage and Indexing - Architecture & Design)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+1. Complete the definitive, consolidated architecture specification for Phase 4B.3 in `PHASE_4B_3_ARCHITECTURE_FINAL.md`.
+2. Fully resolve items C1 through C15:
+   - Ordered 18-step rebuild and migration protocol with durable staging intent before Chroma collection creation and atomic SQLite activation.
+   - Atomic cleanup state machine (`RETIRED -> TOMBSTONED -> PURGING -> COMPLETED -> CANONICAL PURGE`) with composite key `(document_id, generation)` and supported ChromaDB 0.5.5 `get(where=..., limit=1)` zero-chunk verification.
+   - Comprehensive crash recovery for pending ingestion and partial Chroma operations.
+   - Explicit separation of Chroma internal metadata from the Phase 4B.1 user metadata allowlist.
+   - Strict SQLite connection initialization order (`foreign_keys`, `WAL` outside transaction, `synchronous=FULL`, `busy_timeout=30000`, `BEGIN IMMEDIATE`, singleton verification).
+   - Component-by-component filesystem traversal on POSIX (`O_DIRECTORY | O_NOFOLLOW`), handle-based reparse and DACL checks on Windows, and remote mount rejection.
+   - Complete Win32 `LockFileEx` adapter contract with safe probe-lock release.
+   - Race-free reader snapshot pin publication under lifecycle shared lock with empty-set fast path.
+   - SQLite canonical hydration preserving Chroma similarity rankings.
+   - 100% Phase 4B.1 metadata allowlist adherence and strict typing.
+   - Failure-history identity derivation reusing Phase 4B.2 untruncated SHA-256 hashes.
+   - Deterministic hash embedding algorithm with word tokenization, symbol fallback, zero-cancellation seed fallback, and unit norm.
+   - Provider resolution on restart failing closed on mismatches.
+   - Normalized relational `retired_generations` table replacing undefined JSON SQL functions.
+   - Injective length-prefixed Chroma storage IDs `len:doc_id:chunk_id`.
+3. Provide a complete 20-boundary crash-recovery matrix and 30-item implementation verification gates.
+4. Update tracking documentation (`TASKS.md`, `PROJECT_STATUS.md`, `DEVELOPMENT_LOG.md`) stating Phase 4B.3 architecture is ready for independent review.
+
+### Actions Taken & Files Changed
+- **`PHASE_4B_3_ARCHITECTURE_FINAL.md`:** Created complete 15-section final consolidated architecture specification.
+- **`TASKS.md`:** Updated Phase 4B.3 section noting final architecture specification delivered and pending independent review.
+- **`PROJECT_STATUS.md`:** Updated active phase summary reflecting final architecture delivered and pending review.
+- **`DEVELOPMENT_LOG.md`:** Added Entry 013.
+
+### Status
+- **Architecture and documentation only:** Zero implementation files created or edited.
+- **Zero dependencies installed or modified.**
+- **Approved Phase 1–4B.2 code completely untouched.**
+- **Phase 4B.3 Status:** Final architecture specification delivered in `PHASE_4B_3_ARCHITECTURE_FINAL.md`. Awaiting independent review and explicit approval before any implementation begins.
+
+---
+
+## 2026-11-03 - Entry 014: Phase 4B.3 Revision 15 Final Blocker Corrections
+- **Phase:** Phase 4B.3 (Local Knowledge Storage and Indexing - Architecture & Design)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+Resolve five remaining blockers identified in the independent Revision 14 review:
+1. **Truly Atomic Cleanup Transitions:** Verified `rowcount == 1` across both `cleanup_registry` and `canonical_documents` updates in Transition 1 (`RETIRED -> TOMBSTONED`); verified `rowcount == 1` for `TOMBSTONED -> PURGING`; eliminated orphaned generation-index and canonical records during Transition 3 (`CANONICAL PURGE`).
+2. **Repaired Snapshot Failure Paths:** Added explicit rollback of committed SQLite snapshots under lifecycle lock before pin release on provider resolution failure; eliminated pin release on failed SQLite snapshot deletion during `release_query_session`; retriable session close.
+3. **Executable Startup Reconciliation Procedure:** Added complete Section 9.2 (`reconcile_startup`) specifying the 5-phase algorithm, strict hierarchical locks ($\mathcal{L}_1 \implies \mathcal{L}_2$), non-blocking kernel pin probes, staging generation rollback, pending record rollback, and cleanup state resumption.
+4. **Retired-Generation Pruning:** Added Section 9.3 (`_prune_retired_generations`) detailing SQLite active snapshot checks, kernel pin lock tests, Chroma collection deletion before SQLite catalog row deletion, and crash recovery.
+5. **Chroma Metadata & Connection Consistency:** Standardized the exact 6-field Chroma internal metadata allowlist (`document_id`, `chunk_id`, `chunk_index`, `source_identity`, `source_type`, `generation`) in Section 8.1, Section 9.1, and Section 14.2; clearly separated internal indexing metadata from Phase 4B.1 user metadata; eliminated all remaining `self.conn` instances in favor of thread-local `conn_manager.get_connection()`.
+
+### Actions Taken & Files Changed
+- **`PHASE_4B_3_ARCHITECTURE_FINAL.md`:** Updated to Revision 15 incorporating all five blocker corrections.
+- **`DEVELOPMENT_LOG.md`:** Added Entry 014.
+- **Zero implementation files created or edited.**
+- **Zero dependencies modified (`chromadb` is not installed).**
+- **Existing test suite verification:** 287 of 287 tests passing.
+
+---
+
+## 2026-11-03 - Entry 015: Phase 4B.3 Revision 16 Targeted Corrections
+- **Phase:** Phase 4B.3 (Local Knowledge Storage and Indexing - Architecture & Design)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+Apply two targeted corrections to the Phase 4B.3 architecture specification:
+1. **Startup Reconciliation Deadlock Prevention:** Separated cleanup and pruning into internal routines (`_run_cleanup_pass_locked`, `_prune_retired_generations_locked`) assuming the caller already holds the exclusive lifecycle lock, eliminating nested lock acquisitions on non-reentrant OS file locks. Public methods (`run_cleanup_pass`, `prune_retired_generations`) acquire the lifecycle lock exactly once.
+2. **QueryReaderSession Store Identity Validation:** Replaced undefined `session.store_id != self.store_id` check in `query_chunks()` with direct object identity comparison `session.store is not self` to eliminate `AttributeError` and reliably reject foreign sessions.
+
+### Actions Taken & Files Changed
+- **`PHASE_4B_3_ARCHITECTURE_FINAL.md`:** Updated to Revision 16 (Sections 4.2, 6.3, 8.2, 9.1, 9.2, 9.3, 13.1, 14.1).
+- **`DEVELOPMENT_LOG.md`:** Added Entry 015.
+- **Zero implementation or test code modified.**
+- **Zero dependencies modified.**
+- **Existing test suite verification:** 287 of 287 tests passing.
+
+---
+
+## 2026-11-04 - Entry 016: Phase 4B.3 Revision 17 Targeted Corrections
+- **Phase:** Phase 4B.3 (Local Knowledge Storage and Indexing - Architecture & Design)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+Apply two targeted corrections to Phase 4B.3 Revision 16:
+1. **Retired-Generation Pruning Lock Ownership Contract:**
+   - Standalone public `prune_retired_generations()` strictly acquires `.writer.lock EX` followed by `.lifecycle.lock EX` and releases them in reverse order ($\mathcal{L}_1 \implies \mathcal{L}_2$).
+   - Migration workflow (Step 17 in `_execute_generation_transition`) already owns `.writer.lock EX`; delegates to `_prune_retired_generations_under_writer()` which acquires `.lifecycle.lock EX` without re-acquiring `.writer.lock EX`, avoiding self-deadlock.
+   - Startup reconciliation (`reconcile_startup`) already owns both locks; delegates to `_prune_retired_generations_locked(conn)` directly with zero lock re-acquisition.
+2. **Fail-Closed Pin-Probe Error Handling:**
+   - Defined `PinStatus` (`STALE`, `LIVE`, `UNKNOWN`) and `probe_pin_liveness()`.
+   - Successful non-blocking exclusive lock acquisition confirms `PinStatus.STALE` (reader dead; release probe lock).
+   - Specifically recognized lock contention (`BlockingIOError`, `EAGAIN`, `EWOULDBLOCK`, `ERROR_LOCK_VIOLATION`) confirms `PinStatus.LIVE`.
+   - Any unexpected error (permission error, descriptor exhaustion, lock-adapter failure) transitions probe status to `PinStatus.UNKNOWN`.
+   - `reconcile_startup()` and `_prune_retired_generations_locked()` fail closed on `PIN_UNKNOWN`, preserving pin files and SQLite snapshot records and safely deferring generation pruning.
+
+### Actions Taken & Files Changed
+- **`PHASE_4B_3_ARCHITECTURE_FINAL.md`:** Updated to Revision 17 (Sections 4.1, 4.3, 9.1, 9.2, 9.3, 13.1, 14.1).
+- **`DEVELOPMENT_LOG.md`:** Added Entry 016.
+- **Zero implementation or test code modified.**
+- **Zero dependencies modified.**
+- **Existing test suite verification:** 287 of 287 tests passing.
+
+---
+
+## 2026-11-04 - Entry 017: Phase 4B.3 Implementation and Verification
+- **Phase:** Phase 4B.3 (Local Knowledge Storage and Indexing - Implementation & Test Verification)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+Implement the complete Phase 4B.3 local knowledge storage layer in strict accordance with the approved Revision 17 architecture specification (`PHASE_4B_3_ARCHITECTURE_FINAL.md`).
+
+1. **SQLite Canonical Coordinator & Connection Management:**
+   - Enforce SQLite $\ge 3.35.0$ runtime version check at startup.
+   - Strict connection PRAGMA initialization sequence (`foreign_keys = ON`, `journal_mode = WAL` outside transaction, `synchronous = FULL`, `busy_timeout = 30000`).
+   - Thread-local `ConnectionManager` providing ACID transactions with explicit `BEGIN IMMEDIATE` boundaries.
+   - Invariant schema with foreign keys, compound primary keys, deterministic storage keys, and relational `retired_generations`.
+
+2. **ChromaDB Derived Vector Index & Deterministic Embedding Baseline:**
+   - Installed `chromadb==0.5.5` into virtual environment.
+   - Integrated generation-scoped collections (`chunks_gen_<G>`).
+   - Implemented `DeterministicHashEmbeddingProvider` (384 dimensions, SHA-256 word tokenization, punctuation fallback, cancellation zero fallback, and unit $L_2$ normalization).
+   - Injective Chroma document and chunk ID encoder/decoder (`format_chroma_id`, `parse_chroma_id`).
+
+3. **Concurrency & Locking Control:**
+   - Implemented global lock hierarchy ($\mathcal{L}_1 \implies \mathcal{L}_2$: `.writer.lock EX` $\implies$ `.lifecycle.lock EX`).
+   - Kernel file locks via POSIX `fcntl.flock` and Win32 `LockFileEx` ctypes adapter.
+   - Non-blocking fail-closed 3-state pin probing (`PinStatus`: `STALE`, `LIVE`, `UNKNOWN`).
+   - Reader snapshot isolation (`QueryReaderSession`) using kernel pin file descriptors with safe acquisition and release rollback.
+
+4. **18-Step Migration & Lifecycle Workflows:**
+   - Ordered 18-step rebuild and migration protocol with durable staging intent before Chroma collection creation and atomic SQLite activation.
+   - Atomic cleanup state transitions (`RETIRED -> TOMBSTONED -> PURGING -> CANONICAL PURGE`) with verified row-count invariants (`rowcount == 1`).
+   - Safe retired-generation pruning with hierarchical lock ownership:
+     - Public `prune_retired_generations()` acquires `.writer.lock EX` then `.lifecycle.lock EX`.
+     - Migration step 17 calls `_prune_retired_generations_under_writer()` acquiring `.lifecycle.lock EX` without reacquiring writer lock.
+     - Startup reconciliation owns both locks and calls `_prune_retired_generations_locked(conn)` directly.
+
+5. **Storage Root Security & Traversal Defense:**
+   - Component-by-component traversal validation with `openat`/`O_DIRECTORY | O_NOFOLLOW` on POSIX.
+   - Win32 handle-based reparse point and DACL owner validation.
+   - Rejection of non-local network mounts (`nfs`, `smb`, `cifs`, etc.).
+   - Mode 0700 permission and process UID ownership checks.
+
+6. **Comprehensive 28-Test Architecture Suite:**
+   - Created `tests/test_local_knowledge_store.py` testing all 28 architectural invariants and edge cases specified in Section 14.
+
+### Actions Taken & Files Changed
+- **`backend/app/services/knowledge_store.py`:** Created full Phase 4B.3 implementation (1,349 lines).
+- **`tests/test_local_knowledge_store.py`:** Created complete 28-test verification suite (1,152 lines).
+- **`TASKS.md`:** Marked Phase 4B.3 tasks as completed.
+- **`PROJECT_STATUS.md`:** Updated Phase 4B.3 status to completed with metrics.
+- **`DEVELOPMENT_LOG.md`:** Added Entry 017.
+
+### Verification Results
+- **Phase 4B.3 Tests (`tests/test_local_knowledge_store.py`):** 28 / 28 PASSED (100%).
+- **Existing Regression Tests (`tests/`):** 287 / 287 PASSED (100%).
+- **Total Test Suite:** 315 / 315 PASSED (0 regressions).
+- **Scope Compliance:** Zero changes to Phase 1–4A, Phase 4B.1 schemas (`backend/app/schemas/knowledge.py`), or Phase 4B.2 ingestion (`backend/app/services/document_ingestion.py`).
+
+---
+
+## 2026-11-04 - Entry 018: Phase 4B.4 Retrieval and Metadata Filtering Implementation
+
+### Objective
+Implement Phase 4B.4 Retrieval and Metadata Filtering on top of the approved Phase 4B.3 storage architecture and schema foundation:
+- Semantic retrieval using deterministic hash embedding provider and ChromaDB vector index.
+- SQLite canonical hydration ensuring chunk content and rich metadata come strictly from SQLite `canonical_chunks`.
+- Reader snapshot active document set validation (`captured_active_doc_ids`).
+- Generation and commit-sequence consistency adhering to pinned reader session tokens.
+- Bounded candidate expansion preventing premature result truncation during post-filtering.
+- Strongly-typed `RetrievalFilter` and immutable `RetrievalResult`.
+- Normalized relevance score computation mapping cosine distance $[0.0, 2.0]$ to $[0.0, 1.0]$.
+- Complete error handling and input validation.
+
+### Implementation Details
+1. **Relevance Score Normalization & Data Models (`backend/app/services/knowledge_store.py`):**
+   - Implemented `compute_relevance_score(distance: float) -> float`: monotonic clamping mapping $0.0 \mapsto 1.0$, $1.0 \mapsto 0.5$, $2.0 \mapsto 0.0$ (`round(max(0.0, min(1.0, 1.0 - (d / 2.0))), 6)`).
+   - Implemented `RetrievalResult(BaseModel, frozen=True, extra="forbid")` holding canonical `chunk: KnowledgeChunk`, `score: float`, and `distance: float`.
+   - Implemented `RetrievalFilter(BaseModel, extra="forbid")` with strict field allowlist, alias resolution (`path` $\to$ `path_template`), allowlisted Phase 4B.1 `metadata` keys, and validation against `_validate_http_method`, `_validate_path_template`, `_validate_operation_id`, and `_validate_metadata_dict`.
+
+2. **Core Retrieval Pipeline (`LocalKnowledgeStore.retrieve`):**
+   - Input validation: `query_text` (non-empty string, $\le 16384$ characters), `top_k` ($1 \le \text{top\_k} \le 1000$).
+   - Session validation: object identity (`session.store is self`) and active pin status (`session.is_active`).
+   - Active set check: returns `[]` immediately if `captured_active_doc_ids` is empty.
+   - Vector querying: Chroma `chunks_gen_<G>` queried using session's bound embedding provider.
+   - Bounded candidate expansion: iteratively expands candidate window ($4\times$) up to total collection chunks when candidates are filtered out by SQLite metadata, ensuring `top_k` results are retrieved whenever available.
+   - Canonical hydration: all chunk content and metadata hydrated from SQLite `canonical_chunks` with `CorruptedIndexIntegrityError` check.
+   - Candidate filtering: evaluates `source_type`, `http_method`, `path_template`, `operation_id`, `failure_category`, and `metadata` dictionary with AND conjunction.
+
+3. **Session Helper Methods & Backward Compatibility:**
+   - Added `QueryReaderSession.retrieve()` and `QueryReaderSession.query_chunks()`.
+   - Refactored `LocalKnowledgeStore.query_chunks()` to delegate to `self.retrieve()`, returning `List[KnowledgeChunk]` when `return_scores=False` (default, 100% backward-compatible) and `List[RetrievalResult]` when `return_scores=True`.
+
+4. **Comprehensive Test Suite (`tests/test_knowledge_retrieval.py`):**
+   - 24 comprehensive unit and integration tests covering:
+     - Relevance score formulas and boundary clamping.
+     - RetrievalResult structure and frozen immutability.
+     - Top-k bounding.
+     - Canonical SQLite hydration provenance and Chroma mismatch corruption detection.
+     - Individual and composite metadata filters (`source_type`, `http_method`, `path_template`/`path`, `operation_id`, `failure_category`, `metadata`).
+     - Bounded candidate expansion with deep match recovery.
+     - Reader snapshot isolation and tombstoned/deleted document zero exposure.
+     - Generation isolation during index rebuild/migration.
+     - Empty store, reset store, and unavailable generation handling.
+     - Session lifecycle, context manager, and foreign session rejection.
+     - Strict input validation errors.
+     - Backward compatibility of `query_chunks`.
+
+### Verification Results
+- **Phase 4B.4 Retrieval Tests (`tests/test_knowledge_retrieval.py`):** 24 / 24 PASSED (100%).
+- **Phase 4B.3 Storage Tests (`tests/test_local_knowledge_store.py`):** 33 PASSED, 4 skipped on Linux (100%).
+- **Full Repository Test Suite (`pytest tests/`):** 344 PASSED, 4 skipped on Linux, 0 failures (100%).
+- **Scope Compliance:** Zero changes to Phase 1–4A, Phase 4B.1 schemas (`backend/app/schemas/knowledge.py`), or Phase 4B.2 ingestion (`backend/app/services/document_ingestion.py`).
+
+
+---
+
+## Entry 018 — Phase 4C: Retest Controller, Failure Investigation Orchestration & Diagnostic Reporting
+- **Date:** 2026-11-06
+- **Phase:** Phase 4C (Retest Controller, Failure Investigation Orchestration and Diagnostic Reporting)
+- **Author:** Antigravity AI Assistant
+
+### Objectives
+Implement the approved Phase 4C architecture contract across 6 source files and 3 test suites:
+1. `backend/app/schemas/sanitizer.py`: Boundary data sanitization engine.
+2. `backend/app/schemas/retest.py`: Deeply immutable frozen retest models.
+3. `backend/app/schemas/report.py`: Deeply immutable diagnostic report schemas with complete consistency validator.
+4. `backend/app/services/retest_controller.py`: Ephemeral HMAC request fingerprinting, RFC Retry-After parsing, bounded delays, hard ceiling of 2 follow-ups, and fail-closed variation synthesis.
+5. `backend/app/services/report_generator.py`: Secure Markdown report generation safe against HTML injection and Markdown format corruption.
+6. `backend/app/agent/orchestrator.py`: Outer WorkflowOrchestrator wrapping compiled Phase 3 `agent_graph` externally, managing unified follow-up ledgers, and safely degrading FailureInvestigator on knowledge store exceptions.
+7. `tests/test_retest_controller.py`, `tests/test_report_generator.py`, `tests/test_workflow_orchestrator.py`: Comprehensive test suites.
+
+### Verification Results
+- **Phase 4C Retest Controller Tests (`tests/test_retest_controller.py`):** 10 / 10 PASSED.
+- **Phase 4C Report Generator Tests (`tests/test_report_generator.py`):** 15 / 15 PASSED.
+- **Phase 4C Workflow Orchestrator Tests (`tests/test_workflow_orchestrator.py`):** 12 / 12 PASSED.
+- **Full Repository Test Suite (`pytest tests/`):** 407 PASSED, 4 skipped on Linux, 0 failures (100%).
+- **Scope Compliance:** Zero changes to protected Phase 1A–4B.6 files; all implementations strictly additive.
