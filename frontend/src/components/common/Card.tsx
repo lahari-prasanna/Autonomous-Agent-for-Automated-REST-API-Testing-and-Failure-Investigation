@@ -7,7 +7,7 @@ export const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 }) => {
   return (
     <div
-      className={`bg-slate-900 border border-slate-800 rounded-xl shadow-sm overflow-hidden ${className}`}
+      className={`bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden text-slate-900 ${className}`}
       {...props}
     >
       {children}
@@ -22,7 +22,7 @@ export const CardHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 }) => {
   return (
     <div
-      className={`px-6 py-5 border-b border-slate-800/80 flex flex-col gap-1 ${className}`}
+      className={`px-6 py-5 border-b border-slate-100 flex flex-col gap-1 ${className}`}
       {...props}
     >
       {children}
@@ -37,7 +37,7 @@ export const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({
 }) => {
   return (
     <h3
-      className={`text-base font-semibold text-slate-100 tracking-tight ${className}`}
+      className={`text-base font-semibold text-slate-900 tracking-tight ${className}`}
       {...props}
     >
       {children}
@@ -51,7 +51,7 @@ export const CardDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement
   ...props
 }) => {
   return (
-    <p className={`text-sm text-slate-400 ${className}`} {...props}>
+    <p className={`text-sm text-slate-500 ${className}`} {...props}>
       {children}
     </p>
   );
@@ -76,7 +76,7 @@ export const CardFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 }) => {
   return (
     <div
-      className={`px-6 py-4 bg-slate-900/60 border-t border-slate-800/80 flex items-center justify-between ${className}`}
+      className={`px-6 py-4 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between ${className}`}
       {...props}
     >
       {children}

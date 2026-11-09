@@ -21,6 +21,7 @@ class Project(Base, UUIDMixin, TimestampMixin):
     """
     Project model storing API definitions, target servers, and historical test sessions.
     """
+
     __tablename__ = "projects"
 
     name: Mapped[str] = mapped_column(
@@ -74,4 +75,6 @@ class Project(Base, UUIDMixin, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return f"<Project id={self.id} name='{self.name}' spec_title='{self.spec_title}'>"
+        return (
+            f"<Project id={self.id} name='{self.name}' spec_title='{self.spec_title}'>"
+        )

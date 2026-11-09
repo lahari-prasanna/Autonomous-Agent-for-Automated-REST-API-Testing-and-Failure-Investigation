@@ -67,6 +67,9 @@ export function useRunEvents({
   const onTerminalEventRef = useRef(onTerminalEvent);
   onTerminalEventRef.current = onTerminalEvent;
 
+  const initialStatusRef = useRef(initialStatus);
+  initialStatusRef.current = initialStatus;
+
   // Sync initial status when query loads or updates
   useEffect(() => {
     if (initialStatus) {
@@ -340,33 +343,52 @@ export function useRunEvents({
     }
   }, []);
 
-  // Connect EventSource
+  // Connect EventSource (supports active streaming and historical replay on completed runs)
   useEffect(() => {
     if (!runId) return;
 
-    // If initial status was already terminal, don't open SSE stream
-    if (
-      initialStatus === 'completed' ||
-      initialStatus === 'failed' ||
-      initialStatus === 'cancelled'
-    ) {
-      setConnectionState('completed');
-      return;
-    }
+    const startStatus = initialStatusRef.current;
+    const isTerminal =
+      startStatus === 'completed' ||
+      startStatus === 'failed' ||
+      startStatus === 'cancelled';
 
-    setConnectionState('connecting');
+    setConnectionState(isTerminal ? 'completed' : 'connecting');
 
     const sseUrl = `/api/v1/runs/${runId}/events`;
     const es = new EventSource(sseUrl);
     eventSourceRef.current = es;
 
+    let terminalGraceTimeout: ReturnType<typeof setTimeout> | null = null;
+
     es.onopen = () => {
-      setConnectionState('connected');
+      if (!isTerminal) {
+        setConnectionState('connected');
+      } else {
+        // When opening an already-completed run, backend replays available history immediately.
+        // If history is empty (e.g. server restarted), close after grace period to prevent idle hanging.
+        terminalGraceTimeout = setTimeout(() => {
+          if (eventSourceRef.current === es) {
+            es.close();
+            eventSourceRef.current = null;
+            setConnectionState('completed');
+          }
+        }, 1500);
+      }
     };
 
     es.onerror = () => {
-      // Browser EventSource automatically attempts to reconnect and sends Last-Event-ID
-      setConnectionState((curr) => (curr === 'completed' ? 'completed' : 'reconnecting'));
+      if (isTerminal) {
+        // Stream closure after replay is normal for completed runs
+        es.close();
+        if (eventSourceRef.current === es) {
+          eventSourceRef.current = null;
+        }
+        setConnectionState('completed');
+      } else {
+        // Active execution reconnection attempt
+        setConnectionState((curr) => (curr === 'completed' ? 'completed' : 'reconnecting'));
+      }
     };
 
     // Register all named backend event types
@@ -375,6 +397,9 @@ export function useRunEvents({
     });
 
     return () => {
+      if (terminalGraceTimeout) {
+        clearTimeout(terminalGraceTimeout);
+      }
       ALL_SSE_EVENT_TYPES.forEach((type) => {
         es.removeEventListener(type, handleEvent);
       });
@@ -382,7 +407,7 @@ export function useRunEvents({
       eventSourceRef.current = null;
       setConnectionState((curr) => (curr === 'completed' ? 'completed' : 'disconnected'));
     };
-  }, [runId, initialStatus, handleEvent]);
+  }, [runId, handleEvent]);
 
   return {
     connectionState,

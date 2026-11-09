@@ -31,8 +31,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2">
-          {isDestructive && <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />}
+        <div className="flex items-center gap-2 text-slate-900">
+          {isDestructive && <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />}
           <span>{title}</span>
         </div>
       }
@@ -53,7 +53,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         </>
       }
     >
-      <p className="text-sm text-slate-300 leading-relaxed">{message}</p>
+      <p className="text-sm text-slate-600 leading-relaxed">{message}</p>
     </Modal>
   );
 };

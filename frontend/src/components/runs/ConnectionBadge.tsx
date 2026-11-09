@@ -12,7 +12,7 @@ export const ConnectionBadge: React.FC<ConnectionBadgeProps> = ({ state, classNa
     case 'connected':
       return (
         <div
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-800/60 text-xs text-emerald-300 ${className}`}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 ${className}`}
           title="Connected to real-time Server-Sent Events (SSE) progress stream"
         >
           <span className="relative flex h-2 w-2">
@@ -26,10 +26,10 @@ export const ConnectionBadge: React.FC<ConnectionBadgeProps> = ({ state, classNa
     case 'connecting':
       return (
         <div
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-950/40 border border-blue-800/60 text-xs text-blue-300 ${className}`}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-xs text-blue-700 ${className}`}
           title="Establishing connection to Server-Sent Events stream..."
         >
-          <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-400 shrink-0" />
+          <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />
           <span className="font-medium">Connecting...</span>
         </div>
       );
@@ -37,10 +37,10 @@ export const ConnectionBadge: React.FC<ConnectionBadgeProps> = ({ state, classNa
     case 'reconnecting':
       return (
         <div
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-950/40 border border-amber-800/60 text-xs text-amber-300 ${className}`}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-xs text-amber-800 ${className}`}
           title="Connection interrupted. Reconnecting with Last-Event-ID replay..."
         >
-          <AlertTriangle className="w-3.5 h-3.5 animate-bounce text-amber-400 shrink-0" />
+          <AlertTriangle className="w-3.5 h-3.5 animate-bounce text-amber-600 shrink-0" />
           <span className="font-medium">Reconnecting...</span>
         </div>
       );
@@ -48,10 +48,10 @@ export const ConnectionBadge: React.FC<ConnectionBadgeProps> = ({ state, classNa
     case 'completed':
       return (
         <div
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-400 ${className}`}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs text-slate-700 ${className}`}
           title="Run execution stream has terminated"
         >
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
           <span className="font-medium">Stream Finished</span>
         </div>
       );
@@ -60,7 +60,7 @@ export const ConnectionBadge: React.FC<ConnectionBadgeProps> = ({ state, classNa
     default:
       return (
         <div
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-500 ${className}`}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs text-slate-500 ${className}`}
           title="SSE stream disconnected"
         >
           <WifiOff className="w-3.5 h-3.5 shrink-0" />

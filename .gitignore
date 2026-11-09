@@ -26,6 +26,7 @@ wheels/
 
 # Virtualenv
 .env
+.env.example
 .venv
 env/
 venv/
@@ -38,6 +39,8 @@ frontend/node_modules/
 *.tsbuildinfo
 .npm
 .eslintcache
+
+/DEVELOPMENT_LOG.md
 
 # Databases & Vector DBs
 *.sqlite3

@@ -68,6 +68,27 @@ export interface RunCreateRequest {
 
 export interface RunSummary {
   total_operations?: number;
+  passed_operations?: number;
+  failed_operations?: number;
+  error_operations?: number;
+  resolved_by_transient_retry?: number;
+  total_transient_retries_dispatched?: number;
+  total_requests_executed?: number;
+  pass_rate_percentage?: number;
+  total_duration_ms?: number;
+  variation_metrics?: {
+    candidates_generated?: number;
+    candidates_schema_valid?: number;
+    candidates_rejected?: number;
+    candidates_approved?: number;
+    candidates_dispatched?: number;
+    candidates_dispatch_failed?: number;
+    variation_tests_passed?: number;
+    variation_tests_failed?: number;
+    variation_success_rate_percentage?: number;
+    [key: string]: unknown;
+  };
+  // Legacy / fallback compatibility
   total_tests?: number;
   passed?: number;
   failed?: number;

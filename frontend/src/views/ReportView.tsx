@@ -13,7 +13,6 @@ import {
   Download,
   Copy,
   Check,
-  ShieldCheck,
   Clock,
   AlertTriangle,
   Search,
@@ -131,12 +130,12 @@ export const ReportView: React.FC = () => {
             Back to Live Run
           </Button>
         </Link>
-        <div className="p-10 rounded-2xl bg-amber-950/25 border border-amber-800/60 text-center space-y-4 max-w-xl mx-auto my-8">
-          <Clock className="w-12 h-12 text-amber-400 mx-auto" />
-          <h3 className="text-xl font-bold text-slate-100">
+        <div className="p-10 rounded-2xl bg-amber-50/80 border border-amber-200 text-center space-y-4 max-w-xl mx-auto my-8">
+          <Clock className="w-12 h-12 text-amber-600 mx-auto" />
+          <h3 className="text-xl font-bold text-slate-900">
             Diagnostic Report Not Ready
           </h3>
-          <p className="text-sm text-slate-300 leading-relaxed">
+          <p className="text-sm text-slate-600 leading-relaxed">
             The test execution run is currently in progress. Diagnostic reports and synthesized
             remediations are compiled immediately upon run completion.
           </p>
@@ -163,8 +162,8 @@ export const ReportView: React.FC = () => {
             Back to Run
           </Button>
         </Link>
-        <div className="p-8 rounded-xl bg-rose-950/30 border border-rose-800/60 text-center space-y-3">
-          <p className="text-sm font-medium text-rose-300">
+        <div className="p-8 rounded-xl bg-rose-50 border border-rose-200 text-center space-y-3">
+          <p className="text-sm font-medium text-rose-700">
             {reportError instanceof Error
               ? reportError.message
               : 'Diagnostic report not found.'}
@@ -231,31 +230,27 @@ export const ReportView: React.FC = () => {
         </Link>
 
         {exportError && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-300 text-xs flex items-center justify-between">
+          <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{exportError}</span>
             </div>
             <button
               onClick={() => setExportError(null)}
-              className="text-slate-400 hover:text-slate-200"
+              className="text-slate-500 hover:text-slate-700 font-medium"
             >
               Dismiss
             </button>
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-slate-100">Diagnostic Report</h2>
-              <span className="font-mono text-xs px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/50 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Sanitized
-              </span>
+              <h2 className="text-2xl font-bold text-slate-900">Diagnostic Report</h2>
             </div>
-            <p className="text-sm text-slate-400 mt-1">
-              API: <span className="text-slate-200 font-medium">{report.api_title}</span> (v{report.api_version})
+            <p className="text-sm text-slate-500 mt-1">
+              API: <span className="text-slate-800 font-semibold">{report.api_title}</span> (v{report.api_version})
               {report.base_url && (
                 <span className="ml-2 text-slate-500 font-mono text-xs">
                   • {report.base_url}
@@ -266,14 +261,14 @@ export const ReportView: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* View Mode Toggle */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg p-0.5 flex">
+            <div className="inline-flex p-1 bg-slate-100 rounded-lg border border-slate-200">
               <button
                 type="button"
                 onClick={() => setActiveTab('structured')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   activeTab === 'structured'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-white text-blue-700 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Interactive
@@ -281,10 +276,10 @@ export const ReportView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('markdown')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   activeTab === 'markdown'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-white text-blue-700 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Markdown Preview
@@ -295,7 +290,7 @@ export const ReportView: React.FC = () => {
             <Button
               variant="secondary"
               size="sm"
-              leftIcon={copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              leftIcon={copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
               onClick={handleCopyMarkdown}
             >
               {copied ? 'Copied' : 'Copy MD'}
@@ -334,23 +329,23 @@ export const ReportView: React.FC = () => {
           <div className="space-y-3 pt-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <h3 className="text-lg font-bold text-slate-100">
+                <h3 className="text-lg font-bold text-slate-900">
                   Tested Operations ({filteredOperations.length} of {operations.length})
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500">
                   Inspect execution outcomes, failure classifications, and investigation evidence
                 </p>
               </div>
 
               {/* Search Bar */}
               <div className="relative w-full sm:w-64">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Filter by path or method..."
-                  className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -358,14 +353,14 @@ export const ReportView: React.FC = () => {
             {/* Filters Row */}
             <div className="flex flex-wrap items-center gap-2 text-xs">
               {/* Outcome filter buttons */}
-              <div className="flex flex-wrap items-center gap-1 bg-slate-900/80 p-1 rounded-lg border border-slate-800">
+              <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
                 <button
                   type="button"
                   onClick={() => setOutcomeFilter('all')}
                   className={`px-2.5 py-1 rounded transition-colors ${
                     outcomeFilter === 'all'
-                      ? 'bg-indigo-600 text-white font-medium'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-white text-blue-700 font-semibold shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   All ({operations.length})
@@ -375,8 +370,8 @@ export const ReportView: React.FC = () => {
                   onClick={() => setOutcomeFilter('passed')}
                   className={`px-2.5 py-1 rounded transition-colors ${
                     outcomeFilter === 'passed'
-                      ? 'bg-emerald-600 text-white font-medium'
-                      : 'text-slate-400 hover:text-emerald-400'
+                      ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                      : 'text-slate-600 hover:text-emerald-700'
                   }`}
                 >
                   Passed ({report.summary.passed_operations})
@@ -387,8 +382,8 @@ export const ReportView: React.FC = () => {
                     onClick={() => setOutcomeFilter('resolved_after_transient_retry')}
                     className={`px-2.5 py-1 rounded transition-colors ${
                       outcomeFilter === 'resolved_after_transient_retry'
-                        ? 'bg-amber-600 text-white font-medium'
-                        : 'text-slate-400 hover:text-amber-400'
+                        ? 'bg-amber-600 text-white font-semibold shadow-sm'
+                        : 'text-slate-600 hover:text-amber-700'
                     }`}
                   >
                     Resolved after retry ({report.summary.resolved_by_transient_retry})
@@ -399,8 +394,8 @@ export const ReportView: React.FC = () => {
                   onClick={() => setOutcomeFilter('failed')}
                   className={`px-2.5 py-1 rounded transition-colors ${
                     outcomeFilter === 'failed'
-                      ? 'bg-rose-600 text-white font-medium'
-                      : 'text-slate-400 hover:text-rose-400'
+                      ? 'bg-rose-600 text-white font-semibold shadow-sm'
+                      : 'text-slate-600 hover:text-rose-700'
                   }`}
                 >
                   Failed ({report.summary.failed_operations})
@@ -411,8 +406,8 @@ export const ReportView: React.FC = () => {
                     onClick={() => setOutcomeFilter('error')}
                     className={`px-2.5 py-1 rounded transition-colors ${
                       outcomeFilter === 'error'
-                        ? 'bg-purple-600 text-white font-medium'
-                        : 'text-slate-400 hover:text-purple-400'
+                        ? 'bg-purple-600 text-white font-semibold shadow-sm'
+                        : 'text-slate-600 hover:text-purple-700'
                     }`}
                   >
                     Error ({report.summary.error_operations})
@@ -427,7 +422,7 @@ export const ReportView: React.FC = () => {
                   <select
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-blue-500 font-mono shadow-sm"
                   >
                     <option value="all">All Categories</option>
                     {failureCategories.map((cat) => (
@@ -443,8 +438,8 @@ export const ReportView: React.FC = () => {
 
           {/* Operations List */}
           {filteredOperations.length === 0 ? (
-            <div className="p-10 text-center text-slate-500 rounded-xl border border-dashed border-slate-800 bg-slate-900/30">
-              <p className="text-sm font-medium text-slate-300">No operations matched your criteria</p>
+            <div className="p-10 text-center text-slate-500 rounded-xl border border-dashed border-slate-300 bg-white shadow-sm">
+              <p className="text-sm font-medium text-slate-900">No operations matched your criteria</p>
               <p className="text-xs text-slate-500 mt-1">
                 Try clearing search terms or selecting a different outcome filter.
               </p>
@@ -459,12 +454,12 @@ export const ReportView: React.FC = () => {
         </div>
       ) : (
         /* TAB 2: Pre-rendered Markdown View */
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <Card className="bg-white border-slate-200 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <CardTitle>Markdown Diagnostic Report</CardTitle>
               <CardDescription>
-                Sanitized GitHub-flavored Markdown representation (Content-Neutralized)
+                Sanitized GitHub-flavored Markdown representation
               </CardDescription>
             </div>
             <Button
@@ -476,11 +471,11 @@ export const ReportView: React.FC = () => {
               Download .md
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             {isMarkdownLoading ? (
               <PageLoader message="Loading markdown..." />
             ) : (
-              <pre className="p-5 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-[750px] overflow-y-auto">
+              <pre className="p-5 bg-slate-50 rounded-xl border border-slate-200 font-mono text-xs text-slate-800 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-[750px] overflow-y-auto">
                 {markdown || report.markdown_rendered || 'No markdown content available.'}
               </pre>
             )}

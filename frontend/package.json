@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --experimental-strip-types --test tests/run_synchronization.test.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.0",

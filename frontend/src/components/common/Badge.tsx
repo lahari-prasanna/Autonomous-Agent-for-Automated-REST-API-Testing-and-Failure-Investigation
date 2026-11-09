@@ -11,12 +11,12 @@ interface BadgeProps {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: 'bg-slate-800 text-slate-300 border-slate-700',
-  primary: 'bg-indigo-950/60 text-indigo-300 border-indigo-700/50',
-  success: 'bg-emerald-950/60 text-emerald-300 border-emerald-700/50',
-  warning: 'bg-amber-950/60 text-amber-300 border-amber-700/50',
-  danger: 'bg-rose-950/60 text-rose-300 border-rose-700/50',
-  neutral: 'bg-slate-800/80 text-slate-400 border-slate-700/60',
+  default: 'bg-slate-100 text-slate-700 border-slate-200',
+  primary: 'bg-blue-50 text-blue-700 border-blue-200',
+  success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  warning: 'bg-amber-50 text-amber-700 border-amber-200',
+  danger: 'bg-rose-50 text-rose-700 border-rose-200',
+  neutral: 'bg-slate-50 text-slate-600 border-slate-200',
 };
 
 export const Badge: React.FC<BadgeProps> = ({
@@ -33,13 +33,13 @@ export const Badge: React.FC<BadgeProps> = ({
         <span
           className={`w-1.5 h-1.5 rounded-full ${
             variant === 'success'
-              ? 'bg-emerald-400'
+              ? 'bg-emerald-500'
               : variant === 'danger'
-              ? 'bg-rose-400'
+              ? 'bg-rose-500'
               : variant === 'warning'
-              ? 'bg-amber-400'
+              ? 'bg-amber-500'
               : variant === 'primary'
-              ? 'bg-indigo-400'
+              ? 'bg-blue-500'
               : 'bg-slate-400'
           }`}
         />
@@ -54,18 +54,18 @@ export const HttpMethodBadge: React.FC<{ method: string; className?: string }> =
   className = '',
 }) => {
   const m = method.toUpperCase();
-  let colorStyle = 'bg-slate-800 text-slate-300 border-slate-700';
+  let colorStyle = 'bg-slate-100 text-slate-700 border-slate-200';
 
   if (m === 'GET') {
-    colorStyle = 'bg-blue-950/70 text-blue-300 border-blue-700/50';
+    colorStyle = 'bg-blue-50 text-blue-700 border-blue-200';
   } else if (m === 'POST') {
-    colorStyle = 'bg-emerald-950/70 text-emerald-300 border-emerald-700/50';
+    colorStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
   } else if (m === 'PUT') {
-    colorStyle = 'bg-amber-950/70 text-amber-300 border-amber-700/50';
+    colorStyle = 'bg-amber-50 text-amber-700 border-amber-200';
   } else if (m === 'PATCH') {
-    colorStyle = 'bg-purple-950/70 text-purple-300 border-purple-700/50';
+    colorStyle = 'bg-purple-50 text-purple-700 border-purple-200';
   } else if (m === 'DELETE') {
-    colorStyle = 'bg-rose-950/70 text-rose-300 border-rose-700/50';
+    colorStyle = 'bg-rose-50 text-rose-700 border-rose-200';
   }
 
   return (
@@ -93,9 +93,9 @@ export const StatusBadge: React.FC<{ status: RunStatus | string; className?: str
     case 'running':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-blue-950/60 text-blue-300 border-blue-700/50 ${className}`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200 ${className}`}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
           Running
         </span>
       );

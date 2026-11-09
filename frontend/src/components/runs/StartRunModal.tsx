@@ -62,61 +62,55 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
     },
   });
 
-  const toggleEndpoint = (pathOrId: string) => {
+  const toggleEndpoint = (path: string) => {
     setSelectedEndpoints((prev) => {
       const next = new Set(prev);
-      if (next.has(pathOrId)) {
-        next.delete(pathOrId);
+      if (next.has(path)) {
+        next.delete(path);
       } else {
-        next.add(pathOrId);
+        next.add(path);
       }
       return next;
     });
   };
 
+  const filteredEndpoints = endpoints.filter((ep) => {
+    const q = endpointSearch.toLowerCase();
+    return ep.path.toLowerCase().includes(q) || ep.method.toLowerCase().includes(q);
+  });
+
   const selectAllFiltered = () => {
-    const next = new Set(selectedEndpoints);
-    filteredEndpoints.forEach((ep) => next.add(ep.path));
-    setSelectedEndpoints(next);
+    setSelectedEndpoints((prev) => {
+      const next = new Set(prev);
+      filteredEndpoints.forEach((ep) => next.add(ep.path));
+      return next;
+    });
   };
 
   const deselectAllFiltered = () => {
-    const next = new Set(selectedEndpoints);
-    filteredEndpoints.forEach((ep) => next.delete(ep.path));
-    setSelectedEndpoints(next);
+    setSelectedEndpoints((prev) => {
+      const next = new Set(prev);
+      filteredEndpoints.forEach((ep) => next.delete(ep.path));
+      return next;
+    });
   };
-
-  const filteredEndpoints = endpoints.filter((ep) => {
-    if (!endpointSearch.trim()) return true;
-    const term = endpointSearch.toLowerCase();
-    return (
-      ep.path.toLowerCase().includes(term) ||
-      ep.method.toLowerCase().includes(term) ||
-      (ep.summary && ep.summary.toLowerCase().includes(term))
-    );
-  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setClientError(null);
 
-    if (concurrency < 1 || concurrency > 5) {
-      setClientError('Concurrency must be between 1 and 5 workers.');
-      return;
-    }
-
-    let target_endpoints: string[] | undefined = undefined;
+    let targetEndpointsList: string[] | undefined = undefined;
     if (scopeMode === 'custom') {
       if (selectedEndpoints.size === 0) {
-        setClientError('Please select at least one endpoint or switch to "All Endpoints".');
+        setClientError('Please select at least one endpoint to test, or switch to "All Endpoints".');
         return;
       }
-      target_endpoints = Array.from(selectedEndpoints);
+      targetEndpointsList = Array.from(selectedEndpoints);
     }
 
     const payload: RunCreateRequest = {
       concurrency,
-      target_endpoints,
+      target_endpoints: targetEndpointsList,
       custom_base_url: customBaseUrl.trim() || undefined,
       safe_dev_mode: safeDevMode,
     };
@@ -174,15 +168,15 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Error Banners */}
         {clientError && (
-          <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-800/80 text-rose-300 text-xs flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+          <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
             <span>{clientError}</span>
           </div>
         )}
 
         {apiError && (
-          <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-800/80 text-rose-300 text-xs flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+          <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
             <div>
               <span className="font-semibold">
                 {apiError.errorType ? `${apiError.errorType}: ` : ''}
@@ -193,8 +187,8 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
         )}
 
         {genericErrorMessage && (
-          <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-800/80 text-rose-300 text-xs flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+          <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
             <span>{genericErrorMessage}</span>
           </div>
         )}
@@ -202,11 +196,11 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
         {/* Concurrency Setting */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-              <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5 text-blue-600" />
               Concurrency Limit
             </label>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/60 font-semibold">
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
               {concurrency} {concurrency === 1 ? 'Worker' : 'Workers'}
             </span>
           </div>
@@ -218,8 +212,8 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
                 onClick={() => setConcurrency(lvl)}
                 className={`py-2 text-xs font-semibold rounded-lg border transition-all ${
                   concurrency === lvl
-                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
-                    : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    : 'bg-white text-slate-700 border-slate-300 hover:border-slate-400'
                 }`}
               >
                 {lvl}
@@ -233,17 +227,17 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
 
         {/* Target Scope Selection */}
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
             Endpoint Test Scope
           </label>
-          <div className="grid grid-cols-2 p-1 bg-slate-950 border border-slate-800 rounded-lg mb-3">
+          <div className="grid grid-cols-2 p-1 bg-slate-100 border border-slate-200 rounded-lg mb-3">
             <button
               type="button"
               onClick={() => setScopeMode('all')}
               className={`py-2 text-xs font-medium rounded-md transition-all ${
                 scopeMode === 'all'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-white text-blue-700 font-semibold shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               All Endpoints ({endpoints.length})
@@ -253,8 +247,8 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
               onClick={() => setScopeMode('custom')}
               className={`py-2 text-xs font-medium rounded-md transition-all ${
                 scopeMode === 'custom'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-white text-blue-700 font-semibold shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Select Specific ({selectedEndpoints.size})
@@ -262,17 +256,17 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
           </div>
 
           {scopeMode === 'custom' && (
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
               {/* Search & Bulk Selection */}
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
                   <input
                     type="text"
                     value={endpointSearch}
                     onChange={(e) => setEndpointSearch(e.target.value)}
                     placeholder="Filter endpoints by path or method..."
-                    className="w-full pl-8 pr-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                    className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <Button
@@ -296,7 +290,7 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
               </div>
 
               {/* Endpoint List */}
-              <div className="max-h-48 overflow-y-auto divide-y divide-slate-800/80 rounded-lg border border-slate-800/60 bg-slate-900/60">
+              <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
                 {filteredEndpoints.length === 0 ? (
                   <p className="p-4 text-center text-xs text-slate-500">
                     No matching endpoints found.
@@ -310,8 +304,8 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
                         onClick={() => toggleEndpoint(ep.path)}
                         className={`p-2.5 flex items-center justify-between cursor-pointer text-xs transition-colors ${
                           isSelected
-                            ? 'bg-indigo-950/40 text-slate-100'
-                            : 'hover:bg-slate-800/40 text-slate-300'
+                            ? 'bg-blue-50/70 text-slate-900 font-medium'
+                            : 'hover:bg-slate-50 text-slate-700'
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -321,8 +315,8 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
                         <div
                           className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ml-2 ${
                             isSelected
-                              ? 'bg-indigo-600 border-indigo-500 text-white'
-                              : 'border-slate-700 bg-slate-900'
+                              ? 'bg-blue-600 border-blue-600 text-white'
+                              : 'border-slate-300 bg-white'
                           }`}
                         >
                           {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
@@ -338,33 +332,33 @@ export const StartRunModal: React.FC<StartRunModalProps> = ({
 
         {/* Execution Base URL Override */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1">
-            Custom Base URL Override <span className="text-slate-500 font-normal">(Optional)</span>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            Custom Base URL Override <span className="text-slate-400 font-normal">(Optional)</span>
           </label>
           <input
             type="url"
             value={customBaseUrl}
             onChange={(e) => setCustomBaseUrl(e.target.value)}
             placeholder="e.g. http://127.0.0.1:8000 or https://staging.api.example.com"
-            className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+            className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500"
           />
         </div>
 
         {/* Safe Dev Mode Toggle */}
-        <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-start gap-3">
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-3">
           <input
             id="safe_dev_mode"
             type="checkbox"
             checked={safeDevMode}
             onChange={(e) => setSafeDevMode(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500"
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 bg-white text-blue-600 focus:ring-blue-500"
           />
           <label htmlFor="safe_dev_mode" className="text-xs cursor-pointer select-none">
-            <span className="font-semibold text-slate-200 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="font-semibold text-slate-900 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
               Safe Dev Mode (Permit 127.0.0.1 loopback)
             </span>
-            <p className="text-slate-400 mt-0.5 leading-relaxed">
+            <p className="text-slate-500 mt-0.5 leading-relaxed">
               Allows verified local loopback requests to mock test servers and prevents SSRF
               blocks on localhost.
             </p>

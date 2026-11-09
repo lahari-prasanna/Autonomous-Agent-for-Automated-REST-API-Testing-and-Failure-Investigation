@@ -17,6 +17,7 @@ import {
 
 interface LiveEventTimelineProps {
   timeline: TimelineEvent[];
+  isCompleted?: boolean;
 }
 
 function getEventBadgeStyle(type: SSEEventType): { bg: string; text: string; icon: React.ReactNode } {
@@ -24,79 +25,82 @@ function getEventBadgeStyle(type: SSEEventType): { bg: string; text: string; ico
     case 'run_created':
     case 'run_started':
       return {
-        bg: 'bg-indigo-950/70 border-indigo-800/60',
-        text: 'text-indigo-300',
-        icon: <Activity className="w-3 h-3 text-indigo-400" />,
+        bg: 'bg-blue-50 border-blue-200',
+        text: 'text-blue-700 font-medium',
+        icon: <Activity className="w-3 h-3 text-blue-600" />,
       };
 
     case 'operation_started':
       return {
-        bg: 'bg-blue-950/70 border-blue-800/60',
-        text: 'text-blue-300',
-        icon: <RefreshCw className="w-3 h-3 text-blue-400 animate-spin" />,
+        bg: 'bg-sky-50 border-sky-200',
+        text: 'text-sky-700 font-medium',
+        icon: <RefreshCw className="w-3 h-3 text-sky-600 animate-spin" />,
       };
 
     case 'attempt_completed':
       return {
-        bg: 'bg-slate-800 border-slate-700',
-        text: 'text-slate-300',
-        icon: <Clock className="w-3 h-3 text-slate-400" />,
+        bg: 'bg-slate-100 border-slate-200',
+        text: 'text-slate-700 font-medium',
+        icon: <Clock className="w-3 h-3 text-slate-500" />,
       };
 
     case 'investigation_completed':
       return {
-        bg: 'bg-purple-950/70 border-purple-800/60',
-        text: 'text-purple-300',
-        icon: <SearchCheck className="w-3 h-3 text-purple-400" />,
+        bg: 'bg-purple-50 border-purple-200',
+        text: 'text-purple-700 font-medium',
+        icon: <SearchCheck className="w-3 h-3 text-purple-600" />,
       };
 
     case 'retest_completed':
       return {
-        bg: 'bg-amber-950/70 border-amber-800/60',
-        text: 'text-amber-300',
-        icon: <Flame className="w-3 h-3 text-amber-400" />,
+        bg: 'bg-amber-50 border-amber-200',
+        text: 'text-amber-700 font-medium',
+        icon: <Flame className="w-3 h-3 text-amber-600" />,
       };
 
     case 'variation_completed':
       return {
-        bg: 'bg-cyan-950/70 border-cyan-800/60',
-        text: 'text-cyan-300',
-        icon: <Sliders className="w-3 h-3 text-cyan-400" />,
+        bg: 'bg-indigo-50 border-indigo-200',
+        text: 'text-indigo-700 font-medium',
+        icon: <Sliders className="w-3 h-3 text-indigo-600" />,
       };
 
     case 'operation_completed':
       return {
-        bg: 'bg-emerald-950/70 border-emerald-800/60',
-        text: 'text-emerald-300',
-        icon: <CheckCircle2 className="w-3 h-3 text-emerald-400" />,
+        bg: 'bg-emerald-50 border-emerald-200',
+        text: 'text-emerald-700 font-medium',
+        icon: <CheckCircle2 className="w-3 h-3 text-emerald-600" />,
       };
 
     case 'run_completed':
       return {
-        bg: 'bg-emerald-950/80 border-emerald-700',
-        text: 'text-emerald-200 font-semibold',
-        icon: <CheckCircle2 className="w-3 h-3 text-emerald-400" />,
+        bg: 'bg-emerald-50 border-emerald-300',
+        text: 'text-emerald-800 font-semibold',
+        icon: <CheckCircle2 className="w-3 h-3 text-emerald-600" />,
       };
 
     case 'run_failed':
     case 'run_cancelled':
       return {
-        bg: 'bg-rose-950/80 border-rose-800',
-        text: 'text-rose-300',
-        icon: <XCircle className="w-3 h-3 text-rose-400" />,
+        bg: 'bg-rose-50 border-rose-200',
+        text: 'text-rose-700 font-medium',
+        icon: <XCircle className="w-3 h-3 text-rose-600" />,
       };
 
     case 'heartbeat':
     default:
       return {
-        bg: 'bg-slate-900 border-slate-800',
+        bg: 'bg-slate-50 border-slate-200',
         text: 'text-slate-500',
-        icon: <HelpCircle className="w-3 h-3 text-slate-500" />,
+        icon: <HelpCircle className="w-3 h-3 text-slate-400" />,
       };
   }
 }
 
-export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({ timeline }) => {
+export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({
+  timeline,
+  isCompleted,
+}) => {
   const [filterType, setFilterType] = useState<string>('all');
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
 
@@ -131,7 +135,7 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({ timeline }
       <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-indigo-400" />
+            <Activity className="w-4 h-4 text-blue-600" />
             Live Event Stream
           </CardTitle>
           <CardDescription>
@@ -140,14 +144,14 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({ timeline }
         </div>
 
         {/* Filter controls */}
-        <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
           <button
             type="button"
             onClick={() => setFilterType('all')}
             className={`px-2.5 py-1 rounded transition-colors ${
               filterType === 'all'
-                ? 'bg-indigo-600 text-white font-medium'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-blue-700 font-semibold shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             All Events
@@ -157,8 +161,8 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({ timeline }
             onClick={() => setFilterType('operations')}
             className={`px-2.5 py-1 rounded transition-colors ${
               filterType === 'operations'
-                ? 'bg-indigo-600 text-white font-medium'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-blue-700 font-semibold shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Operations
@@ -168,8 +172,8 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({ timeline }
             onClick={() => setFilterType('investigations')}
             className={`px-2.5 py-1 rounded transition-colors ${
               filterType === 'investigations'
-                ? 'bg-indigo-600 text-white font-medium'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-blue-700 font-semibold shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Investigations
@@ -179,8 +183,8 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({ timeline }
             onClick={() => setFilterType('retests')}
             className={`px-2.5 py-1 rounded transition-colors ${
               filterType === 'retests'
-                ? 'bg-indigo-600 text-white font-medium'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-blue-700 font-semibold shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Retests & Variations
@@ -190,11 +194,22 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({ timeline }
 
       <CardContent className="p-0">
         {filteredTimeline.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 text-xs">
-            No events recorded yet. Events will appear here in real-time as execution progresses.
+          <div className="p-8 text-center text-slate-500 text-xs space-y-1">
+            {filterType !== 'all' ? (
+              <p>No events match the selected "{filterType}" filter.</p>
+            ) : isCompleted ? (
+              <>
+                <p className="font-medium text-slate-700">Real-time event stream history is no longer active.</p>
+                <p className="text-slate-500 text-[11px] max-w-md mx-auto mt-0.5">
+                  The test run has finished and event streaming has ended. Full operation results, evidence, and remediations are preserved in the Tracked Operations tab and Diagnostic Report.
+                </p>
+              </>
+            ) : (
+              <p>No events recorded yet. Events will appear here in real-time as execution progresses.</p>
+            )}
           </div>
         ) : (
-          <div className="divide-y divide-slate-800 max-h-[460px] overflow-y-auto">
+          <div className="divide-y divide-slate-100 max-h-[460px] overflow-y-auto">
             {filteredTimeline.map((ev) => {
               const badge = getEventBadgeStyle(ev.eventType);
               const isExpanded = expandedEvents.has(ev.id);
@@ -204,16 +219,16 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({ timeline }
                   : undefined;
 
               return (
-                <div key={ev.id} className="hover:bg-slate-850/40 transition-colors">
+                <div key={ev.id} className="hover:bg-slate-50 transition-colors">
                   <div
                     onClick={() => toggleExpand(ev.id)}
                     className="p-3 flex items-center justify-between gap-3 text-xs cursor-pointer select-none"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       {isExpanded ? (
-                        <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                       ) : (
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                       )}
 
                       <span
@@ -224,7 +239,7 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({ timeline }
                       </span>
 
                       {opId && (
-                        <span className="font-mono text-slate-300 truncate max-w-[220px] sm:max-w-md">
+                        <span className="font-mono text-slate-700 truncate max-w-[220px] sm:max-w-md">
                           {opId}
                         </span>
                       )}
@@ -232,13 +247,13 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({ timeline }
 
                     <div className="flex items-center gap-3 shrink-0 text-slate-500 font-mono text-[11px]">
                       {ev.data.status_code !== undefined && (
-                        <span className="text-slate-400">
+                        <span className="text-slate-700">
                           HTTP {String(ev.data.status_code)}
                         </span>
                       )}
                       {ev.data.passed !== undefined && (
                         <span
-                          className={ev.data.passed ? 'text-emerald-400' : 'text-rose-400'}
+                          className={ev.data.passed ? 'text-emerald-600 font-medium' : 'text-rose-600 font-medium'}
                         >
                           {ev.data.passed ? 'PASSED' : 'FAILED'}
                         </span>
@@ -248,8 +263,8 @@ export const LiveEventTimeline: React.FC<LiveEventTimelineProps> = ({ timeline }
                   </div>
 
                   {isExpanded && (
-                    <div className="px-6 pb-3 pt-1 bg-slate-950/70 border-t border-slate-800/60">
-                      <pre className="font-mono text-[11px] text-slate-300 p-3 rounded-lg bg-slate-900 border border-slate-800 overflow-x-auto">
+                    <div className="px-6 pb-3 pt-1 bg-slate-50/70 border-t border-slate-100">
+                      <pre className="font-mono text-[11px] text-slate-800 p-3 rounded-lg bg-white border border-slate-200 overflow-x-auto shadow-sm">
                         {JSON.stringify(ev.data, null, 2)}
                       </pre>
                     </div>

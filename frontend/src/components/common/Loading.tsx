@@ -13,13 +13,13 @@ export const Spinner: React.FC<{ size?: 'sm' | 'md' | 'lg'; className?: string }
 
   return (
     <Loader2
-      className={`animate-spin text-indigo-400 ${sizeMap[size]} ${className}`}
+      className={`animate-spin text-blue-600 ${sizeMap[size]} ${className}`}
     />
   );
 };
 
 export const Skeleton: React.FC<{ className?: string }> = ({ className = '' }) => {
-  return <div className={`animate-pulse bg-slate-800/80 rounded ${className}`} />;
+  return <div className={`animate-pulse bg-slate-200/80 rounded ${className}`} />;
 };
 
 export const PageLoader: React.FC<{ message?: string }> = ({
@@ -28,7 +28,7 @@ export const PageLoader: React.FC<{ message?: string }> = ({
   return (
     <div className="min-h-[300px] flex flex-col items-center justify-center p-8 text-center">
       <Spinner size="lg" className="mb-4" />
-      <p className="text-sm text-slate-400 font-medium">{message}</p>
+      <p className="text-sm text-slate-500 font-medium">{message}</p>
     </div>
   );
 };
@@ -50,12 +50,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <div
-      className={`flex flex-col items-center justify-center p-12 text-center rounded-xl border border-dashed border-slate-800 bg-slate-900/30 ${className}`}
+      className={`flex flex-col items-center justify-center p-12 text-center rounded-xl border border-dashed border-slate-300 bg-white shadow-sm ${className}`}
     >
-      {icon && <div className="text-slate-500 mb-3">{icon}</div>}
-      <h4 className="text-base font-semibold text-slate-200 mb-1">{title}</h4>
+      {icon && <div className="text-slate-400 mb-3">{icon}</div>}
+      <h4 className="text-base font-semibold text-slate-900 mb-1">{title}</h4>
       {description && (
-        <p className="text-sm text-slate-400 max-w-sm mb-5">{description}</p>
+        <p className="text-sm text-slate-500 max-w-sm mb-5">{description}</p>
       )}
       {action && <div>{action}</div>}
     </div>
